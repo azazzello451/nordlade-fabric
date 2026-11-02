@@ -1,0 +1,13 @@
+# Zugangsdaten – nie hochladen
+.env
+*.key
+*secret*
+
+# Erzeugte Testdaten – entstehen jederzeit neu aus dem Generator
+generator/output/
+*.csv
+
+# Python-Hilfsdateien
+__pycache__/
+.pytest_cache/
+.venv/
