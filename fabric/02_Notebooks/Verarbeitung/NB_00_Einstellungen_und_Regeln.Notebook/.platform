@@ -3,7 +3,7 @@
   "metadata": {
     "type": "Notebook",
     "displayName": "NB_00_Einstellungen_und_Regeln",
-    "description": "Das Handbuch der Datenstrecke. Legt fest, wie Partnerdateien aussehen müssen, welche Zeilen als fehlerhaft gelten, ab welchem Qualitätswert eine Lieferung gesperrt wird und wie geprüft wird, dass keine Zeile verloren geht. Verarbeitet selbst keine Daten – alle anderen Notebooks lesen hier ihre Regeln nach."
+    "description": "Zentrales Register aller Einstellungen und Prüfregeln. Hier steht an einer Stelle, wie Partnerdateien aufgebaut sein müssen, wann eine Zeile als fehlerhaft gilt und ab wann eine ganze Lieferung gesperrt wird. Dieses Notebook verarbeitet keine Daten. Die anderen Notebooks laden es und arbeiten mit diesen Werten."
   },
   "config": {
     "version": "2.0",

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "NB_01_Tabellen_anlegen",
+    "description": "Legt die komplette Grundstruktur des Lakehouse an: die Ordner unter Files (Testdaten, Partner-Ablage, Bronze) und unter Tables vier Bereiche (Steuerung, Qualität, Silber, Gold) mit allen Tabellen – zunächst leer, mit festen Spalten und Datentypen. Legt nur an, was noch fehlt: Mehrmaliges Ausführen ändert nichts. Läuft einmal je Umgebung (dev und prod), bevor Daten verarbeitet werden."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "c35688b4-5217-a705-43a4-e4753b7e758d"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "NB_T1_Testdaten_erzeugen",
+    "description": "Testhilfe: Erzeugt alle Testdaten für 90 Nächte und legt sie im Lager (Files/beispieldaten) ab – Stammdaten und Ladevorgänge als CSV-Dateien, wie ein Partner sie liefern würde, mit absichtlich eingebauten Fehlern und Sonderfällen. Dazu eine Datei erwartung.json mit den richtigen Ergebnissen je Nacht. Erzeugt bei jedem Lauf exakt dieselben Daten. Im echten Betrieb nicht nötig."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "c02b6397-4a0b-bcd8-4864-963be63a89ef"
+  }
+}
