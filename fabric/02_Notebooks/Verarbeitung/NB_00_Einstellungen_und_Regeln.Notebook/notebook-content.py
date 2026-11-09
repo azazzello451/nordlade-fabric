@@ -291,3 +291,72 @@ def pruefe_bilanz(gelesen, gueltig, fehlerhaft, lieferung=""):
 # META   "language": "python",
 # META   "language_group": "synapse_pyspark"
 # META }
+
+# CELL ********************
+
+# =====================================================
+# Zelle 7: Logbuch der Läufe
+#
+# Was diese Zelle bereitstellt:
+#   lauf_starten  trägt beim Start eines Schritts eine
+#                 Zeile mit Status "laeuft" in
+#                 steuerung.laeufe ein.
+#   lauf_beenden  ergänzt am Ende Endzeit, Status
+#                 (erfolgreich oder fehler), Zahlen und
+#                 eine kurze Meldung.
+#   neue_lauf_id  erzeugt eine Lauf-Nummer, wenn ein
+#                 Notebook von Hand gestartet wird.
+#   sql_text      setzt einen Text sicher in einen
+#                 SQL-Befehl ein (Anführungszeichen).
+#
+# Wozu: Am Morgen sieht man in einer Tabelle, welcher
+# Schritt wann lief, ob er geklappt hat und wie viele
+# Lieferungen und Zeilen er bearbeitet hat.
+# Zeiten sind in UTC (Fabric-Standard).
+# =====================================================
+
+from datetime import datetime
+
+
+def neue_lauf_id():
+    return datetime.now().strftime("manuell-%Y%m%d-%H%M%S")
+
+
+def sql_text(wert):
+    return "NULL" if wert is None else "'" + str(wert).replace("'", "''") + "'"
+
+
+def _sql_zahl(wert):
+    return "NULL" if wert is None else str(int(wert))
+
+
+def lauf_starten(lauf_id, schritt):
+    spark.sql(f"""
+        INSERT INTO steuerung.laeufe VALUES (
+            {sql_text(lauf_id)}, {sql_text(schritt)}, current_timestamp(), NULL,
+            'laeuft', NULL, NULL, NULL, NULL, NULL)
+    """)
+
+
+def lauf_beenden(lauf_id, schritt, status, lieferungen=None, gelesen=None,
+                 gueltig=None, fehlerhaft=None, meldung=None):
+    spark.sql(f"""
+        UPDATE steuerung.laeufe SET
+            ende_zeit = current_timestamp(),
+            status = {sql_text(status)},
+            lieferungen = {_sql_zahl(lieferungen)},
+            zeilen_gelesen = {_sql_zahl(gelesen)},
+            zeilen_gueltig = {_sql_zahl(gueltig)},
+            zeilen_fehlerhaft = {_sql_zahl(fehlerhaft)},
+            meldung = {sql_text(meldung)}
+        WHERE lauf_id = {sql_text(lauf_id)}
+          AND schritt = {sql_text(schritt)}
+          AND status = 'laeuft'
+    """)
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }

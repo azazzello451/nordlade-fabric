@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "DataPipeline",
+    "displayName": "PL_Verarbeitung",
+    "description": "Die nächtliche Verarbeitung, Schritt für Schritt: holt die Partnerdateien aus der Ablage unverändert nach Bronze (je Lauf ein eigener Eingangsordner, nichts wird überschrieben) und leert die Ablage nur bei Erfolg. Danach folgen Registrierung, Prüfung und das Laden nach Silber und Gold. Jeder Schritt startet nur, wenn der vorige erfolgreich war. Im echten Betrieb jede Nacht um 01:00; im Projekt ist der Zeitplan ausgeschaltet und die Pipeline wird von Hand gestartet. Es läuft immer nur ein Lauf gleichzeitig."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "73eb1bcd-cd30-a6d8-4f27-706439f32e59"
+  }
+}

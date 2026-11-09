@@ -1,0 +1,149 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "type": "ForEach",
+        "typeProperties": {
+          "isSequential": true,
+          "items": {
+            "value": "@pipeline().parameters.quellen",
+            "type": "Expression"
+          },
+          "activities": [
+            {
+              "type": "Copy",
+              "typeProperties": {
+                "source": {
+                  "type": "BinarySource",
+                  "formatSettings": {
+                    "type": "BinaryReadSettings"
+                  },
+                  "storeSettings": {
+                    "type": "LakehouseReadSettings",
+                    "recursive": false,
+                    "wildcardFolderPath": "partner_ablage",
+                    "wildcardFileName": {
+                      "value": "@concat(item(), '_*.csv')",
+                      "type": "Expression"
+                    },
+                    "deleteFilesAfterCompletion": true
+                  },
+                  "datasetSettings": {
+                    "type": "Binary",
+                    "typeProperties": {
+                      "location": {
+                        "type": "LakehouseLocation"
+                      }
+                    },
+                    "linkedService": {
+                      "name": "Lakehouse_NordLade",
+                      "properties": {
+                        "type": "Lakehouse",
+                        "typeProperties": {
+                          "artifactId": "f1da6c4f-deee-8117-441d-51bf5db35f91",
+                          "workspaceId": "00000000-0000-0000-0000-000000000000",
+                          "rootFolder": "Files"
+                        },
+                        "annotations": []
+                      }
+                    },
+                    "annotations": []
+                  }
+                },
+                "sink": {
+                  "type": "BinarySink",
+                  "storeSettings": {
+                    "type": "LakehouseWriteSettings"
+                  },
+                  "datasetSettings": {
+                    "type": "Binary",
+                    "typeProperties": {
+                      "location": {
+                        "type": "LakehouseLocation",
+                        "folderPath": {
+                          "value": "@concat('bronze/', item(), '/eingang=', convertFromUtc(pipeline().TriggerTime, 'W. Europe Standard Time', 'yyyyMMdd-HHmm'))",
+                          "type": "Expression"
+                        }
+                      }
+                    },
+                    "linkedService": {
+                      "name": "Lakehouse_NordLade",
+                      "properties": {
+                        "type": "Lakehouse",
+                        "typeProperties": {
+                          "artifactId": "f1da6c4f-deee-8117-441d-51bf5db35f91",
+                          "workspaceId": "00000000-0000-0000-0000-000000000000",
+                          "rootFolder": "Files"
+                        },
+                        "annotations": []
+                      }
+                    },
+                    "annotations": []
+                  }
+                },
+                "enableStaging": false
+              },
+              "policy": {
+                "timeout": "0.00:30:00",
+                "retry": 3,
+                "retryIntervalInSeconds": 300,
+                "secureInput": false,
+                "secureOutput": false
+              },
+              "name": "Partner_nach_Bronze",
+              "description": "Kopiert alle Dateien der aktuellen Quelle unverändert aus der Partner-Ablage nach Bronze, in einen eigenen Eingangsordner für diesen Lauf. Danach löscht es genau die erfolgreich kopierten Dateien aus der Ablage. Scheitert das Kopieren, bleibt die Ablage unverändert und der nächste Lauf holt die Dateien nach. Nichts wird umbenannt, umgewandelt oder überschrieben.",
+              "dependsOn": []
+            }
+          ]
+        },
+        "name": "Je_Quelle",
+        "description": "Wiederholt die folgenden Schritte für jede Quelle aus dem Parameter quellen (ladevorgaenge, kunden, stationen, tarife), eine nach der anderen.",
+        "dependsOn": []
+      },
+      {
+        "type": "TridentNotebook",
+        "typeProperties": {
+          "notebookId": "f3f5094e-1e52-b3c0-4151-0055311327c9",
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "parameters": {
+            "\tlauf_id": {
+              "value": {
+                "value": "@pipeline().RunId",
+                "type": "Expression"
+              },
+              "type": "string"
+            }
+          }
+        },
+        "policy": {
+          "timeout": "0.00:30:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 600,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Schema_Gate",
+        "description": "Startet NB_02: registriert alle neuen Dateien in Bronze und prüft ihre Form (doppelt, verändert, Spalten, leer).",
+        "dependsOn": [
+          {
+            "activity": "Je_Quelle",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      }
+    ],
+    "parameters": {
+      "quellen": {
+        "type": "array",
+        "defaultValue": [
+          "ladevorgaenge",
+          "kunden",
+          "stationen",
+          "tarife"
+        ]
+      }
+    }
+  }
+}

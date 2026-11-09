@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "NB_02_Dateien_registrieren_Schema_pruefen",
+    "description": "Schema-Gate. Findet alle neuen Dateien in Bronze und trägt jede ins Register ein (qualitaet.lieferungen): Pfad, Fingerabdruck, Zeilenzahl, Eingangszeit. Prüft die Form jeder Datei: doppelt geliefert, heimlich verändert, Spalten passend zum Datenvertrag, leer. Ergebnis je Datei: angenommen, quarantaene oder duplikat. Eine angenommene neue Version setzt die ältere auf ersetzt. Den Inhalt der Zeilen prüfen erst NB_03 und NB_04."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "f3f5094e-1e52-b3c0-4151-0055311327c9"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "NB_T2_Partner_simulieren",
+    "description": "Testhilfe: Spielt den Partner. Legt die Dateien bestimmter Tage aus dem Lager (Files/beispieldaten) als Kopie in die Partner-Ablage (Files/partner_ablage) – so, als hätte der Partner sie geliefert. Welche Tage, Quellen und Versionen geliefert werden, wird vor jedem Lauf in Zelle 2 (Parameter) eingestellt. Das Lager bleibt unverändert. Im echten Betrieb nicht nötig."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "06ca44c4-023a-a283-469f-b07b801042ba"
+  }
+}

@@ -147,18 +147,25 @@ tabelle_anlegen("steuerung.wasserstand", """
 # =====================================================
 # Zelle 5: Tabellen der Qualität
 #
-# qualitaet.lieferungen    – eine Zeile je Datei:
-#                            Register und Quarantäne-
-#                            Liste zugleich (Spalte status)
-# qualitaet.regelergebnis  – je Lieferung und Regel:
-#                            geprüfte und fehlerhafte Zeilen
-# qualitaet.fehlerzeilen   – jede fehlerhafte Zeile mit
-#                            Regel, Grund und Original
+# qualitaet.lieferungen    – das Register: eine Zeile je
+#                            gelieferter Datei. Zeigt, wo
+#                            die Datei in Bronze liegt (pfad),
+#                            ihren Fingerabdruck und ihren
+#                            Status (z. B. angenommen,
+#                            quarantaene, duplikat).
+#                            Zugleich die Quarantäne-Liste.
+# qualitaet.regelergebnis  – je Lieferung und Regel: wie
+#                            viele Zeilen geprüft und wie
+#                            viele davon fehlerhaft waren.
+# qualitaet.fehlerzeilen   – jede fehlerhafte Zeile einzeln,
+#                            mit Regel, Grund und der
+#                            Originalzeile.
 # =====================================================
 
 tabelle_anlegen("qualitaet.lieferungen", """
     lieferung_id     STRING,
     datei_name       STRING,
+    pfad             STRING,
     quelle           STRING,
     lieferdatum      DATE,
     version          INT,
