@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Lakehouse",
+    "displayName": "Lakehouse_NordLade"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "f1da6c4f-deee-8117-441d-51bf5db35f91"
+  }
+}
