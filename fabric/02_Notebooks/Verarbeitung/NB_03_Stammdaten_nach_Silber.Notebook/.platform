@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "NB_03_Stammdaten_nach_Silber",
+    "description": "Quality-Gate für Stammdaten (Kunden, Stationen, Tarife). Verarbeitet angenommene Lieferungen streng in Datumsreihenfolge und hält bei einer Lücke an. Prüft Regel R5: Schon ein leerer oder doppelter Schlüssel sperrt die ganze Lieferung (Quarantäne). Geprüfte Stände gehen nach Silber: Namen und Tarife werden überschrieben (SCD 1), Heimatregion, Tarif, Region und Betreiber bekommen einen Verlauf (SCD 2). Setzt den Status im Register als Letztes und schreibt ins Logbuch."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "3f0f501b-f608-88df-4b8a-4430ebf3ee93"
+  }
+}

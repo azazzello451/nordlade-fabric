@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "NB_04_Ladevorgaenge_pruefen_nach_Silber",
+    "description": "Quality-Gate für Ladevorgänge. Prüft jede Zeile mit den Regeln R1–R4 aus NB_00 und berechnet den Score. Score unter der Schwelle: ganze Lieferung in Quarantäne. Sonst: gültige Zeilen per MERGE nach Silber (neuere Lieferung gewinnt), fehlerhafte Zeilen mit Regel und Grund in qualitaet.fehlerzeilen. Später korrigiert nachgelieferte Zeilen klären offene Fehlerzeilen automatisch. Prüft am Ende die Bilanz mit den tatsächlich geschriebenen Zahlen. Wartet, bis die Stammdaten der Nacht verarbeitet sind."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "2777f6c9-24e3-944b-4490-4f326d2542c0"
+  }
+}

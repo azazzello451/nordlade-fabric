@@ -134,6 +134,14 @@ SCHLUESSEL = {
 #   []            → Zeile ist in Ordnung
 #   ["R2", "R3"]  → Zeile verstößt gegen R2 und R3
 #
+# R1 unterscheidet zwei Fälle derselben ladevorgang_id:
+#   exakte Kopie (alle Werte gleich)
+#     → die erste Zeile bleibt gültig, jede weitere
+#       Kopie ist ein Fehler (harmlos, wird bereinigt)
+#   Widerspruch (gleiche ID, andere Werte)
+#     → alle Zeilen dieser ID sind Fehler, denn niemand
+#       weiß, welche stimmt (Partner muss klären)
+#
 # Fehlerhafte Zeilen werden nicht gelöscht, nur markiert.
 # =====================================================
 
@@ -142,7 +150,7 @@ from pyspark.sql.window import Window
 
 # Beschreibung jeder Regel (für Berichte und Fehlerzeilen)
 REGELN = {
-    "R1": "ladevorgang_id kommt in der Datei mehrfach vor",
+    "R1": "ladevorgang_id mehrfach: widersprüchliche Werte oder überzählige exakte Kopie",
     "R2": "energie_kwh ist leer oder nicht größer als 0",
     "R3": "ende_zeit liegt vor start_zeit",
     "R4": "station_id ist unbekannt",
@@ -154,18 +162,26 @@ def pruefe_ladevorgaenge(df, df_stationen):
     """Prüft jede Zeile mit R1–R4 und ergänzt die Spalte 'fehler'."""
     spalten = df.columns
 
-    # Für R1: Wie oft kommt jede ladevorgang_id vor?
+    # Für R1: Fingerabdruck des ganzen Inhalts einer Zeile
+    inhalt = F.sha2(F.concat_ws("||", *[F.coalesce(F.col(s).cast("string"), F.lit("")) for s in spalten]), 256)
     je_id = Window.partitionBy("ladevorgang_id")
+    je_id_sortiert = Window.partitionBy("ladevorgang_id").orderBy("_inhalt")
 
     # Für R4: Liste der bekannten Stationen
     bekannt = (df_stationen.select("station_id").distinct()
                            .withColumn("_bekannt", F.lit(True)))
 
-    df = (df.withColumn("_anzahl", F.count("*").over(je_id))
+    df = (df.withColumn("_inhalt", inhalt)
+            .withColumn("_anzahl", F.count("*").over(je_id))
+            .withColumn("_varianten", F.size(F.collect_set("_inhalt").over(je_id)))
+            .withColumn("_nr", F.row_number().over(je_id_sortiert))
             .join(bekannt, on="station_id", how="left"))
 
+    widerspruch = (F.col("_anzahl") > 1) & (F.col("_varianten") > 1)
+    kopie = (F.col("_anzahl") > 1) & (F.col("_varianten") == 1) & (F.col("_nr") > 1)
+
     fehler = F.array_compact(F.array(
-        F.when(F.col("_anzahl") > 1, F.lit("R1")),
+        F.when(widerspruch | kopie, F.lit("R1")),
         F.when(F.col("energie_kwh").isNull() | (F.col("energie_kwh") <= 0), F.lit("R2")),
         F.when(F.col("ende_zeit") < F.col("start_zeit"), F.lit("R3")),
         F.when(F.col("_bekannt").isNull(), F.lit("R4")),
@@ -353,6 +369,59 @@ def lauf_beenden(lauf_id, schritt, status, lieferungen=None, gelesen=None,
           AND schritt = {sql_text(schritt)}
           AND status = 'laeuft'
     """)
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# CELL ********************
+
+# =====================================================
+# Zelle 8: Namen der Status einer Lieferung
+#
+# Jede Lieferung im Register (qualitaet.lieferungen)
+# hat genau einen Status. Der Name sagt, an welchem
+# Tor sie gerade steht und mit welchem Ergebnis.
+#
+# Alle Notebooks benutzen nur diese Namen hier, nie
+# eigenen Text. Soll ein Name sich ändern, ändert man
+# ihn nur an dieser Stelle.
+#
+#   Weg einer guten Lieferung:
+#     schema_ok  →  in_silber
+#
+#   gesperrt (Data Steward muss handeln):
+#     schema_gesperrt    Form der Datei falsch (NB_02)
+#     schluessel_fehler  Stammdaten: Schlüssel leer
+#                        oder doppelt, R5 (NB_03)
+#     score_niedrig      Ladevorgänge: Score unter
+#                        SCHWELLE (NB_04)
+#
+#   sonst:
+#     duplikat              schon einmal unverändert da
+#     ersetzt               von neuerer Version abgelöst
+#     von_hand_freigegeben  Data Steward lässt eine
+#                           gesperrte Lieferung durch
+#     verworfen             Data Steward lehnt sie ab
+# =====================================================
+
+SCHEMA_OK            = "schema_ok"
+SCHEMA_GESPERRT      = "schema_gesperrt"
+SCHLUESSEL_FEHLER    = "schluessel_fehler"
+SCORE_NIEDRIG        = "score_niedrig"
+IN_SILBER            = "in_silber"
+DUPLIKAT             = "duplikat"
+ERSETZT              = "ersetzt"
+VON_HAND_FREIGEGEBEN = "von_hand_freigegeben"
+VERWORFEN            = "verworfen"
+
+# alle gesperrten Status zusammen (für Berichte und Meldungen)
+GESPERRT = [SCHEMA_GESPERRT, SCHLUESSEL_FEHLER, SCORE_NIEDRIG]
+
+print("✓ Status-Namen geladen")
 
 # METADATA ********************
 

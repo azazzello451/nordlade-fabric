@@ -56,10 +56,10 @@
 #                         die veränderte Datei
 # =====================================================
 
-von_datum = "01.07.2026"
-bis_datum = "01.07.2026"
+von_datum = "31.07.2026"
+bis_datum = "31.07.2026"
 quelle = "alle"
-version = 1
+version = 2
 variante = False
 
 # METADATA ********************

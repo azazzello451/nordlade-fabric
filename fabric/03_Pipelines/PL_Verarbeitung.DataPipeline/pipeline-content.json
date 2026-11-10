@@ -106,7 +106,7 @@
           "notebookId": "f3f5094e-1e52-b3c0-4151-0055311327c9",
           "workspaceId": "00000000-0000-0000-0000-000000000000",
           "parameters": {
-            "\tlauf_id": {
+            "lauf_id": {
               "value": {
                 "value": "@pipeline().RunId",
                 "type": "Expression"
@@ -127,6 +127,36 @@
         "dependsOn": [
           {
             "activity": "Je_Quelle",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "TridentNotebook",
+        "typeProperties": {
+          "notebookId": "3f0f501b-f608-88df-4b8a-4430ebf3ee93",
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "parameters": {
+            "lauf_id": {
+              "value": "@pipeline().RunId",
+              "type": "string"
+            }
+          }
+        },
+        "policy": {
+          "timeout": "0.00:45:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Stammdaten_Gate",
+        "description": "Startet NB_03: prüft Stammdaten (R5) streng in Datumsreihenfolge und schreibt sie mit Verlauf nach Silber.",
+        "dependsOn": [
+          {
+            "activity": "Schema_Gate",
             "dependencyConditions": [
               "Succeeded"
             ]
