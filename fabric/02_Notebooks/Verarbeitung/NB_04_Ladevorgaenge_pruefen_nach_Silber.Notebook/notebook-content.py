@@ -37,7 +37,7 @@
 # META   "language_group": "synapse_pyspark"
 # META }
 
-# CELL ********************
+# PARAMETERS CELL ********************
 
 # =====================================================
 # Zelle 2a: Parameter
@@ -84,7 +84,7 @@ print("Lauf:", lauf_id)
 # CELL ********************
 
 # =====================================================
-# Zelle 3a: Werkzeuge – lesen, prüfen, Ergebnisse festhalten
+# Zelle 3a (NB_04): Werkzeuge – lesen, prüfen, Fehler festhalten
 #
 # lieferung_lesen
 #   Liest eine Ladevorgangs-Datei aus Bronze mit den
@@ -92,13 +92,15 @@ print("Lauf:", lauf_id)
 #
 # pruefen_und_festhalten
 #   Prüft jede Zeile mit R1–R4 (Funktion aus NB_00),
-#   berechnet den Score und schreibt:
-#     qualitaet.regelergebnis  je Regel: geprüft, fehlerhaft
-#     qualitaet.fehlerzeilen   jede fehlerhafte Zeile mit
-#                              Regel(n), Grund, Originalzeile
-#   Vorher werden alte Ergebnisse dieser Lieferung gelöscht –
-#   so ändert ein zweiter Lauf nichts.
+#   berechnet den Score und schreibt jede fehlerhafte
+#   Zeile nach qualitaet.fehlerzeilen – mit Regel(n),
+#   Grund und Originalzeile.
+#   Vorher werden alte Fehlerzeilen dieser Lieferung
+#   gelöscht – so ändert ein zweiter Lauf nichts.
 #   Gibt die geprüften Zeilen und den Score zurück.
+#
+# Wie viele Fehler je Regel? → aus qualitaet.fehlerzeilen
+# zählen; Zeilen und Score stehen im Register.
 # =====================================================
 
 from pyspark.sql import functions as F
@@ -111,28 +113,13 @@ def lieferung_lesen(pfad):
 
 
 def pruefen_und_festhalten(df, lieferung):
-    """Prüft R1–R4, schreibt Regelergebnis und Fehlerzeilen, gibt (geprueft, ergebnis) zurück."""
+    """Prüft R1–R4, schreibt die Fehlerzeilen, gibt (geprueft, ergebnis) zurück."""
     stationen = spark.table("silber.stationen").select("station_id")
     geprueft = pruefe_ladevorgaenge(df, stationen).localCheckpoint()   # Funktion aus NB_00
     ergebnis = berechne_score(geprueft)                                 # Funktion aus NB_00
     lid = lieferung["lieferung_id"]
 
-    spark.sql(f"DELETE FROM qualitaet.regelergebnis WHERE lieferung_id = {sql_text(lid)}")
     spark.sql(f"DELETE FROM qualitaet.fehlerzeilen WHERE lieferung_id = {sql_text(lid)}")
-
-    # je Regel: wie viele Zeilen verstoßen dagegen?
-    (geprueft
-        .select(*[F.sum(F.array_contains("fehler", r).cast("int")).alias(r)
-                  for r in ("R1", "R2", "R3", "R4")])
-        .select(F.explode(F.map_from_arrays(
-                    F.array(*[F.lit(r) for r in ("R1", "R2", "R3", "R4")]),
-                    F.array(*[F.col(r) for r in ("R1", "R2", "R3", "R4")]))).alias("regel", "zeilen_fehlerhaft"))
-        .select(F.lit(lid).alias("lieferung_id"), "regel",
-                F.lit(ergebnis["zeilen"]).cast("bigint").alias("zeilen_geprueft"),
-                F.col("zeilen_fehlerhaft").cast("bigint"),
-                F.current_timestamp().alias("geprueft_am"),
-                F.lit(lauf_id).alias("lauf_id"))
-        .write.mode("append").saveAsTable("qualitaet.regelergebnis"))
 
     # jede fehlerhafte Zeile einzeln, mit allen verletzten Regeln
     beschreibung = F.create_map(*[x for r, t in REGELN.items() for x in (F.lit(r), F.lit(t))])
@@ -165,71 +152,28 @@ print("✓ lieferung_lesen und pruefen_und_festhalten bereit")
 # CELL ********************
 
 # =====================================================
-# Zelle 3a: Prüfstation für eine Lieferung
+# Zelle 3a: Prüfstation – Teil 2: prüfen, festhalten
 #
-# Was hier passiert, am Beispiel einer Datei
-# (z. B. Ladevorgänge vom 1.7., 400 Zeilen):
-#
-#   1. Datei aus Bronze öffnen. Damit jede Spalte richtig
-#      gelesen wird (energie_kwh als Zahl, start_zeit als
-#      Zeitpunkt), kommen Namen und Typen aus dem
-#      Datenvertrag in NB_00.
-#   2. Jede Zeile mit den Regeln R1–R4 aus NB_00 prüfen.
-#      Jede Zeile bekommt eine Fehlerliste:
-#        []      → in Ordnung
-#        [R2]    → kWh fehlt
+#   2. Jede Zeile mit R1–R4 aus NB_00 prüfen.
+#        []  → in Ordnung    [R2] → kWh fehlt
 #   3. Score berechnen (z. B. 7 von 400 fehlerhaft → 98,2).
-#   4. Alte Ergebnisse dieser Datei löschen, falls sie
-#      schon einmal geprüft wurde – so wird nichts doppelt.
-#   5. Je Regel die Anzahl der Fehler in
-#      qualitaet.regelergebnis schreiben.
-#   6. Jede fehlerhafte Zeile mit Regel, Grund und
-#      Originalzeile in qualitaet.fehlerzeilen schreiben
-#      (Status: offen).
-#   7. Die geprüften Zeilen und den Score an Zelle 4
-#      zurückgeben.
-#
-# Nicht hier: Die Entscheidung (Score ≥ Schwelle oder
-# Quarantäne) trifft Zelle 4, das Schreiben nach Silber
-# macht Zelle 3b.
+#   4. Alte Fehlerzeilen dieser Datei löschen (nichts doppelt).
+#   5. Jede fehlerhafte Zeile nach qualitaet.fehlerzeilen
+#      (Status: offen). Fehler je Regel lassen sich hieraus
+#      zählen.
+#   6. Geprüfte Zeilen und Score an Zelle 4 zurückgeben.
+# Die Entscheidung trifft Zelle 4, Silber schreibt Zelle 3b.
 # =====================================================
 
-from pyspark.sql import functions as F
-
-
-def lieferung_lesen(pfad):
-    """Schritt 1: Datei mit Namen und Typen aus dem Datenvertrag lesen."""
-    schema = ", ".join(f"{name} {typ}" for name, typ in DATENVERTRAG["ladevorgaenge"])
-    return spark.read.option("header", True).schema(schema).csv(pfad)
-
-
 def pruefen_und_festhalten(df, lieferung):
-    """Schritte 2–7: prüfen, Score, Ergebnisse schreiben, zurückgeben."""
-    # 2. + 3. jede Zeile prüfen, Score berechnen
+    """Schritte 2–6: prüfen, Score, Fehlerzeilen schreiben, zurückgeben."""
     stationen = spark.table("silber.stationen").select("station_id")
     geprueft = pruefe_ladevorgaenge(df, stationen).localCheckpoint()   # Funktion aus NB_00
     ergebnis = berechne_score(geprueft)                                 # Funktion aus NB_00
     lid = lieferung["lieferung_id"]
 
-    # 4. alte Ergebnisse dieser Datei löschen
-    spark.sql(f"DELETE FROM qualitaet.regelergebnis WHERE lieferung_id = {sql_text(lid)}")
     spark.sql(f"DELETE FROM qualitaet.fehlerzeilen WHERE lieferung_id = {sql_text(lid)}")
 
-    # 5. je Regel: wie viele Zeilen verstoßen dagegen?
-    (geprueft
-        .select(*[F.sum(F.array_contains("fehler", r).cast("int")).alias(r)
-                  for r in ("R1", "R2", "R3", "R4")])
-        .select(F.explode(F.map_from_arrays(
-                    F.array(*[F.lit(r) for r in ("R1", "R2", "R3", "R4")]),
-                    F.array(*[F.col(r) for r in ("R1", "R2", "R3", "R4")]))).alias("regel", "zeilen_fehlerhaft"))
-        .select(F.lit(lid).alias("lieferung_id"), "regel",
-                F.lit(ergebnis["zeilen"]).cast("bigint").alias("zeilen_geprueft"),
-                F.col("zeilen_fehlerhaft").cast("bigint"),
-                F.current_timestamp().alias("geprueft_am"),
-                F.lit(lauf_id).alias("lauf_id"))
-        .write.mode("append").saveAsTable("qualitaet.regelergebnis"))
-
-    # 6. jede fehlerhafte Zeile einzeln, mit allen verletzten Regeln
     beschreibung = F.create_map(*[x for r, t in REGELN.items() for x in (F.lit(r), F.lit(t))])
     fach = [s for s, _ in DATENVERTRAG["ladevorgaenge"]]
     (geprueft.filter(F.size("fehler") > 0)
@@ -245,11 +189,10 @@ def pruefen_und_festhalten(df, lieferung):
             F.lit(None).cast("string").alias("bemerkung"))
         .write.mode("append").saveAsTable("qualitaet.fehlerzeilen"))
 
-    # 7. zurückgeben an Zelle 4
     return geprueft, ergebnis
 
 
-print("✓ Prüfstation bereit")
+print("✓ pruefen_und_festhalten bereit")
 
 # METADATA ********************
 

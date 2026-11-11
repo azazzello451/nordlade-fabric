@@ -140,7 +140,10 @@
           "workspaceId": "00000000-0000-0000-0000-000000000000",
           "parameters": {
             "lauf_id": {
-              "value": "@pipeline().RunId",
+              "value": {
+                "value": "@pipeline().RunId",
+                "type": "Expression"
+              },
               "type": "string"
             }
           }
@@ -152,11 +155,41 @@
           "secureInput": false,
           "secureOutput": false
         },
-        "name": "Stammdaten_Gate",
+        "name": "Quality_Gate_Stammdaten",
         "description": "Startet NB_03: prüft Stammdaten (R5) streng in Datumsreihenfolge und schreibt sie mit Verlauf nach Silber.",
         "dependsOn": [
           {
             "activity": "Schema_Gate",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "TridentNotebook",
+        "typeProperties": {
+          "notebookId": "2777f6c9-24e3-944b-4490-4f326d2542c0",
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "parameters": {
+            "lauf_id": {
+              "value": "@pipeline().RunId",
+              "type": "string"
+            }
+          }
+        },
+        "policy": {
+          "timeout": "0.00:30:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 600,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Quality_Gate_Ladevorgaenge",
+        "description": "Prüft Ladevorgänge mit R1–R4 und vergibt einen Quality Score. Schwelle in NB_00 (SCHWELLE, derzeit 80). Score ab Schwelle: gültige Zeilen nach Silber, fehlerhafte nach qualitaet.fehlerzeilen. Score darunter: Lieferung gesperrt (score_niedrig). (NB_04)",
+        "dependsOn": [
+          {
+            "activity": "Quality_Gate_Stammdaten",
             "dependencyConditions": [
               "Succeeded"
             ]

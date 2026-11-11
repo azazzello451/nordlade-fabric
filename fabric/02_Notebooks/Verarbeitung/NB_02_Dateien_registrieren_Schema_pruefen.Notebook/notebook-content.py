@@ -37,7 +37,7 @@
 # META   "language_group": "synapse_pyspark"
 # META }
 
-# CELL ********************
+# PARAMETERS CELL ********************
 
 # =====================================================
 # Zelle 2: Parameter

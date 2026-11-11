@@ -37,7 +37,7 @@
 # META   "language_group": "synapse_pyspark"
 # META }
 
-# CELL ********************
+# PARAMETERS CELL ********************
 
 # =====================================================
 # Zelle 2: Parameter
@@ -92,11 +92,12 @@ print("Lauf:", lauf_id)
 #
 # r5_pruefen
 #   Prüft Regel R5 (Schlüssel leer oder doppelt) und
-#   schreibt das Ergebnis in qualitaet.regelergebnis
-#   und jede fehlerhafte Zeile in qualitaet.fehlerzeilen.
-#   Vorher werden alte Ergebnisse dieser Lieferung
+#   schreibt jede fehlerhafte Zeile nach
+#   qualitaet.fehlerzeilen.
+#   Vorher werden alte Fehlerzeilen dieser Lieferung
 #   gelöscht – so ändert ein zweiter Lauf nichts.
-#   Gibt die Zahl der fehlerhaften Zeilen zurück.
+#   Gibt die Zahl der fehlerhaften Zeilen zurück
+#   (steht danach im Register).
 # =====================================================
 
 from pyspark.sql import functions as F
@@ -116,7 +117,7 @@ def lieferung_lesen(pfad, quelle):
 
 
 def r5_pruefen(df, lieferung):
-    """Prüft R5, schreibt Regelergebnis und Fehlerzeilen, gibt die Fehlerzahl zurück."""
+    """Prüft R5, schreibt die Fehlerzeilen, gibt die Fehlerzahl zurück."""
     quelle = lieferung["quelle"]
     schluessel = SCHLUESSEL[quelle]
     geprueft = pruefe_stammdaten(df, quelle)            # Funktion aus NB_00
@@ -124,15 +125,7 @@ def r5_pruefen(df, lieferung):
     anzahl_fehler = fehler.count()
     lid = sql_text(lieferung["lieferung_id"])
 
-    spark.sql(f"DELETE FROM qualitaet.regelergebnis WHERE lieferung_id = {lid}")
     spark.sql(f"DELETE FROM qualitaet.fehlerzeilen WHERE lieferung_id = {lid}")
-
-    spark.createDataFrame(
-        [(lieferung["lieferung_id"], "R5", df.count(), anzahl_fehler, lauf_id)],
-        "lieferung_id STRING, regel STRING, zeilen_geprueft BIGINT, zeilen_fehlerhaft BIGINT, lauf_id STRING",
-    ).withColumn("geprueft_am", F.current_timestamp()) \
-     .select("lieferung_id", "regel", "zeilen_geprueft", "zeilen_fehlerhaft", "geprueft_am", "lauf_id") \
-     .write.mode("append").saveAsTable("qualitaet.regelergebnis")
 
     if anzahl_fehler:
         fach = [s for s, _ in DATENVERTRAG[quelle]]
