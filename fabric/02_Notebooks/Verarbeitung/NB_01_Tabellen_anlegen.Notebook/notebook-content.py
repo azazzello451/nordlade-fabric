@@ -151,15 +151,14 @@ tabelle_anlegen("steuerung.wasserstand", """
 #                            gelieferter Datei. Zeigt, wo
 #                            die Datei in Bronze liegt (pfad),
 #                            ihren Fingerabdruck und ihren
-#                            Status (z. B. angenommen,
-#                            quarantaene, duplikat).
-#                            Zugleich die Quarantäne-Liste.
-# qualitaet.regelergebnis  – je Lieferung und Regel: wie
-#                            viele Zeilen geprüft und wie
-#                            viele davon fehlerhaft waren.
+#                            Status (z. B. schema_ok,
+#                            in_silber, score_niedrig).
+#                            Zugleich die Liste der
+#                            gesperrten Lieferungen.
 # qualitaet.fehlerzeilen   – jede fehlerhafte Zeile einzeln,
 #                            mit Regel, Grund und der
-#                            Originalzeile.
+#                            Originalzeile. Fehler je Regel
+#                            lassen sich hieraus zählen.
 # =====================================================
 
 tabelle_anlegen("qualitaet.lieferungen", """
@@ -185,15 +184,6 @@ tabelle_anlegen("qualitaet.lieferungen", """
     verarbeitet_am   TIMESTAMP,
     gemeldet_am      TIMESTAMP,
     lauf_id          STRING
-""")
-
-tabelle_anlegen("qualitaet.regelergebnis", """
-    lieferung_id       STRING,
-    regel              STRING,
-    zeilen_geprueft    BIGINT,
-    zeilen_fehlerhaft  BIGINT,
-    geprueft_am        TIMESTAMP,
-    lauf_id            STRING
 """)
 
 tabelle_anlegen("qualitaet.fehlerzeilen", """
@@ -392,7 +382,7 @@ tabelle_anlegen("gold.datenstand", """
 
 ERWARTET = {
     "steuerung": ["laeufe", "wasserstand"],
-    "qualitaet": ["lieferungen", "regelergebnis", "fehlerzeilen"],
+    "qualitaet": ["lieferungen", "fehlerzeilen"],
     "silber":    ["ladevorgaenge", "kunden", "stationen", "tarife"],
     "gold":      ["fakt_ladevorgang", "dim_kunde", "dim_station",
                   "dim_tarif", "dim_datum", "datenstand"],
