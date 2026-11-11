@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "NB_06_Tagesbericht",
+    "description": "Erstellt jeden Morgen den Tagesbericht für den Data Steward: zuerst was zu tun ist (gesperrte Lieferungen, überfällige Fehlerzeilen, Warnungen), dann was neu angekommen ist, wie viel durchgelassen wurde, der Trend und bis wann die Berichte vollständig sind. Legt den Bericht als HTML-Datei ab und gibt ihn an die Pipeline zum Versand weiter."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "1bf27930-7c02-8e33-4ec2-0531871277fd"
+  }
+}

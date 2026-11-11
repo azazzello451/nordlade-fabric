@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "NB_05_Gold_aufbauen",
+    "description": "Bereitet die geprüften Daten aus Silber für die Power-BI-Berichte auf (Umsatz, Energie und Auslastung nach Kunde, Station, Tarif und Zeit). Baut dafür ein Sternschema in Gold: Kunden, Stationen, Tarife und Kalender werden jedes Mal komplett neu aus Silber erzeugt; die Ladevorgänge werden nur ergänzt – es werden nur neue oder korrigierte Ladevorgänge seit dem letzten Lauf übernommen (Change Data Feed). Zum Schluss wird festgehalten, bis zu welchem Tag die Berichte vollständig sind und welche gesperrten Lieferungen fehlen (gold.datenstand)."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "7baab983-9dc0-8906-480c-9674d9434db8"
+  }
+}

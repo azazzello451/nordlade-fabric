@@ -173,7 +173,10 @@
           "workspaceId": "00000000-0000-0000-0000-000000000000",
           "parameters": {
             "lauf_id": {
-              "value": "@pipeline().RunId",
+              "value": {
+                "value": "@pipeline().RunId",
+                "type": "Expression"
+              },
               "type": "string"
             }
           }
@@ -190,6 +193,36 @@
         "dependsOn": [
           {
             "activity": "Quality_Gate_Stammdaten",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "TridentNotebook",
+        "typeProperties": {
+          "notebookId": "7baab983-9dc0-8906-480c-9674d9434db8",
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "parameters": {
+            "lauf_id": {
+              "value": "@pipeline().RunId",
+              "type": "string"
+            }
+          }
+        },
+        "policy": {
+          "timeout": "0.00:30:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 600,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Gold_aufbauen",
+        "description": "Baut aus den geprüften Silber-Daten die Tabellen für die Power-BI-Berichte (Umsatz, Energie, Auslastung). Kunden, Stationen, Tarife und Kalender werden jedes Mal komplett neu erzeugt. Bei den Ladevorgängen kommen nur die neuen und korrigierten seit dem letzten Lauf dazu. Zum Schluss wird festgehalten, bis zu welchem Tag die Berichte vollständig sind. (NB_05)",
+        "dependsOn": [
+          {
+            "activity": "Quality_Gate_Ladevorgaenge",
             "dependencyConditions": [
               "Succeeded"
             ]
