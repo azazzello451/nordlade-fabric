@@ -1,0 +1,11 @@
+expression 'DirectLake - Lakehouse_NordLade' =
+		let
+		    Source = AzureStorage.DataLake("https://onelake.dfs.fabric.microsoft.com/5772901f-81a2-488d-afa1-65630c3fe909/5db35f91-51bf-441d-8117-deeef1da6c4f", [HierarchicalNavigation=true])
+		in
+		    Source
+	lineageTag: f8e6303f-af08-4a2b-829f-218689433bec
+
+	annotation PBI_IncludeFutureArtifacts = False
+
+	annotation PBI_RemovedChildren = [{"remoteItemId":{"analysisServicesObject":{"sourceName":null,"sourceLineageTag":"[qualitaet].[fehlerzeilen]"}},"objectType":"Table"},{"remoteItemId":{"analysisServicesObject":{"sourceName":null,"sourceLineageTag":"[qualitaet].[lieferungen]"}},"objectType":"Table"},{"remoteItemId":{"analysisServicesObject":{"sourceName":null,"sourceLineageTag":"[silber].[tarife]"}},"objectType":"Table"},{"remoteItemId":{"analysisServicesObject":{"sourceName":null,"sourceLineageTag":"[silber].[stationen]"}},"objectType":"Table"},{"remoteItemId":{"analysisServicesObject":{"sourceName":null,"sourceLineageTag":"[silber].[ladevorgaenge]"}},"objectType":"Table"},{"remoteItemId":{"analysisServicesObject":{"sourceName":null,"sourceLineageTag":"[silber].[kunden]"}},"objectType":"Table"},{"remoteItemId":{"analysisServicesObject":{"sourceName":null,"sourceLineageTag":"[steuerung].[wasserstand]"}},"objectType":"Table"},{"remoteItemId":{"analysisServicesObject":{"sourceName":null,"sourceLineageTag":"[steuerung].[laeufe]"}},"objectType":"Table"}]
+

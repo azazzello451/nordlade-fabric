@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "SemanticModel",
+    "displayName": "SM_NordLade",
+    "description": "Semantisches Modell für die Power-BI-Berichte von NordLade. Direct Lake auf die Gold-Tabellen (Sternschema: Ladevorgänge mit Kunden, Stationen, Tarifen und Kalender). Enthält die zentralen Kennzahlen (Umsatz, Energie, Ladevorgänge, Marge, Vormonatsvergleich) und den Datenstand."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "02dc526c-9e6a-928a-4403-087da1f46e8f"
+  }
+}

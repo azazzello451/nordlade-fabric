@@ -1,0 +1,111 @@
+table dim_datum
+	lineageTag: a6fa26f1-a1bf-40fa-a4de-a6d081fe64c6
+	sourceLineageTag: [gold].[dim_datum]
+	dataCategory: Time
+
+	column datum_key
+		dataType: int64
+		formatString: 0
+		lineageTag: 1b134af1-c1a7-4ccf-aca7-4b0c2dafe3f5
+		sourceLineageTag: datum_key
+		summarizeBy: none
+		sourceColumn: datum_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column datum
+		dataType: dateTime
+		isKey
+		formatString: General Date
+		lineageTag: b825c918-58e5-4fd0-a208-e406bb21d4b3
+		sourceLineageTag: datum
+		summarizeBy: none
+		sourceColumn: datum
+
+		annotation SummarizationSetBy = Automatic
+
+	column jahr
+		dataType: int64
+		formatString: 0
+		lineageTag: 628ceb64-dda7-40f8-9805-e58c9442b76d
+		sourceLineageTag: jahr
+		summarizeBy: none
+		sourceColumn: jahr
+
+		annotation SummarizationSetBy = Automatic
+
+	column quartal
+		dataType: int64
+		formatString: 0
+		lineageTag: 441889e7-71f7-41ce-9009-f93d14cc0b15
+		sourceLineageTag: quartal
+		summarizeBy: none
+		sourceColumn: quartal
+
+		annotation SummarizationSetBy = Automatic
+
+	column monat
+		dataType: int64
+		formatString: 0
+		lineageTag: b36753ac-7bed-447d-8bbd-8f0538a55fa3
+		sourceLineageTag: monat
+		summarizeBy: none
+		sourceColumn: monat
+
+		annotation SummarizationSetBy = Automatic
+
+	column monat_name
+		dataType: string
+		lineageTag: ab38d111-4115-4f59-a6ee-ed4c37d4f8fc
+		sourceLineageTag: monat_name
+		summarizeBy: none
+		sourceColumn: monat_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column kalenderwoche
+		dataType: int64
+		formatString: 0
+		lineageTag: ae5e3e83-046e-4c1a-90d9-4bbd7e665eb4
+		sourceLineageTag: kalenderwoche
+		summarizeBy: none
+		sourceColumn: kalenderwoche
+
+		annotation SummarizationSetBy = Automatic
+
+	column wochentag
+		dataType: int64
+		formatString: 0
+		lineageTag: 029e4dbd-bacf-4272-b892-ca7f3de25b48
+		sourceLineageTag: wochentag
+		summarizeBy: none
+		sourceColumn: wochentag
+
+		annotation SummarizationSetBy = Automatic
+
+	column wochentag_name
+		dataType: string
+		lineageTag: ac5afc92-3a39-45eb-809d-9611a8654327
+		sourceLineageTag: wochentag_name
+		summarizeBy: none
+		sourceColumn: wochentag_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column ist_wochenende
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		lineageTag: 78c4d92c-3404-4ba8-8dcd-a42d95f8da54
+		sourceLineageTag: ist_wochenende
+		summarizeBy: none
+		sourceColumn: ist_wochenende
+
+		annotation SummarizationSetBy = Automatic
+
+	partition dim_datum = entity
+		mode: directLake
+		source
+			entityName: dim_datum
+			schemaName: gold
+			expressionSource: 'DirectLake - Lakehouse_NordLade'
+

@@ -1,0 +1,16 @@
+relationship 7ec643d8-0178-7c4b-acb3-c4ce489644c7
+	fromColumn: fakt_ladevorgang.datum_key
+	toColumn: dim_datum.datum_key
+
+relationship 1944d085-ffe4-7163-8121-dfa0e77cbefb
+	fromColumn: fakt_ladevorgang.kunde_sk
+	toColumn: dim_kunde.kunde_sk
+
+relationship de2a6452-4e6b-8966-d675-4132bb3fd38c
+	fromColumn: fakt_ladevorgang.station_sk
+	toColumn: dim_station.station_sk
+
+relationship b9b5018b-127b-03a6-6a91-576ed0c87705
+	fromColumn: fakt_ladevorgang.tarif_sk
+	toColumn: dim_tarif.tarif_sk
+

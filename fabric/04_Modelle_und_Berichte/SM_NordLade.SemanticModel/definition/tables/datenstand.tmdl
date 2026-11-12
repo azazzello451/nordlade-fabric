@@ -1,0 +1,50 @@
+table datenstand
+	lineageTag: 25ec3f5c-35fe-4923-b377-1e4c6ca465fa
+	sourceLineageTag: [gold].[datenstand]
+
+	column letzte_lieferung
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: b4ebe05c-e78a-4969-a3f3-9f1d4185e0d6
+		sourceLineageTag: letzte_lieferung
+		summarizeBy: none
+		sourceColumn: letzte_lieferung
+
+		annotation SummarizationSetBy = Automatic
+
+	column vollstaendig_bis
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: 052e2360-9b7d-49d3-84dd-6c49589ad834
+		sourceLineageTag: vollstaendig_bis
+		summarizeBy: none
+		sourceColumn: vollstaendig_bis
+
+		annotation SummarizationSetBy = Automatic
+
+	column nicht_enthalten
+		dataType: string
+		lineageTag: 94d6c692-3f6f-49b8-915e-16df9e5bf8b2
+		sourceLineageTag: nicht_enthalten
+		summarizeBy: none
+		sourceColumn: nicht_enthalten
+
+		annotation SummarizationSetBy = Automatic
+
+	column aktualisiert_am
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: 60d8ce60-e8b0-495d-b204-7635c06c8e0a
+		sourceLineageTag: aktualisiert_am
+		summarizeBy: none
+		sourceColumn: aktualisiert_am
+
+		annotation SummarizationSetBy = Automatic
+
+	partition datenstand = entity
+		mode: directLake
+		source
+			entityName: datenstand
+			schemaName: gold
+			expressionSource: 'DirectLake - Lakehouse_NordLade'
+

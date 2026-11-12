@@ -1,0 +1,231 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/2.1.0/schema.json",
+  "name": "1a449e8664b940043091",
+  "displayName": "Page 1",
+  "displayOption": "FitToPage",
+  "height": 1080,
+  "width": 1920,
+  "autoPageGenerationConfig": {
+    "selectedFields": [
+      {
+        "Column": {
+          "Expression": {
+            "SourceRef": {
+              "Entity": "dim_datum"
+            }
+          },
+          "Property": "datum"
+        }
+      },
+      {
+        "Measure": {
+          "Expression": {
+            "SourceRef": {
+              "Entity": "fakt_ladevorgang"
+            }
+          },
+          "Property": "Ø Preis je kWh"
+        }
+      }
+    ],
+    "visualContainerConfigurations": [
+      {
+        "name": "a1fce18d301c900ca500",
+        "fields": [
+          {
+            "Column": {
+              "Expression": {
+                "SourceRef": {
+                  "Entity": "dim_datum"
+                }
+              },
+              "Property": "datum"
+            }
+          },
+          {
+            "Measure": {
+              "Expression": {
+                "SourceRef": {
+                  "Entity": "fakt_ladevorgang"
+                }
+              },
+              "Property": "Ø Preis je kWh"
+            }
+          }
+        ]
+      },
+      {
+        "name": "127351d47cac40502dee",
+        "fields": [
+          {
+            "Column": {
+              "Expression": {
+                "SourceRef": {
+                  "Entity": "dim_datum"
+                }
+              },
+              "Property": "datum"
+            }
+          },
+          {
+            "Measure": {
+              "Expression": {
+                "SourceRef": {
+                  "Entity": "fakt_ladevorgang"
+                }
+              },
+              "Property": "Energie kWh"
+            }
+          }
+        ]
+      },
+      {
+        "name": "6ba95cb78396d0c8d490",
+        "fields": [
+          {
+            "Column": {
+              "Expression": {
+                "SourceRef": {
+                  "Entity": "dim_datum"
+                }
+              },
+              "Property": "datum"
+            }
+          },
+          {
+            "Measure": {
+              "Expression": {
+                "SourceRef": {
+                  "Entity": "fakt_ladevorgang"
+                }
+              },
+              "Property": "Marge"
+            }
+          }
+        ]
+      },
+      {
+        "name": "3104eb600764c5915a45",
+        "fields": [
+          {
+            "Column": {
+              "Expression": {
+                "SourceRef": {
+                  "Entity": "dim_datum"
+                }
+              },
+              "Property": "datum"
+            }
+          },
+          {
+            "Measure": {
+              "Expression": {
+                "SourceRef": {
+                  "Entity": "fakt_ladevorgang"
+                }
+              },
+              "Property": "Marge %"
+            }
+          }
+        ]
+      },
+      {
+        "name": "edfdf72a3d00032007d0",
+        "fields": []
+      },
+      {
+        "name": "ea6ebc2a433e550a01cc",
+        "fields": []
+      },
+      {
+        "name": "35e77e528280cdc4c692",
+        "fields": []
+      },
+      {
+        "name": "ec6986606848d0072800",
+        "fields": []
+      },
+      {
+        "name": "c9fbc501e71a4a6d9ed9",
+        "fields": []
+      },
+      {
+        "name": "34c22d28b2c04e6b24c3",
+        "fields": []
+      },
+      {
+        "name": "941dd1e970882139da7b",
+        "fields": []
+      },
+      {
+        "name": "19bc5053c35665101481",
+        "fields": [
+          {
+            "Measure": {
+              "Expression": {
+                "SourceRef": {
+                  "Entity": "fakt_ladevorgang"
+                }
+              },
+              "Property": "Ø Preis je kWh"
+            }
+          }
+        ]
+      },
+      {
+        "name": "f8b4e3ca298d20518a35",
+        "fields": [
+          {
+            "Measure": {
+              "Expression": {
+                "SourceRef": {
+                  "Entity": "fakt_ladevorgang"
+                }
+              },
+              "Property": "Energie kWh"
+            }
+          }
+        ]
+      },
+      {
+        "name": "ac8b9a802ec3500d9709",
+        "fields": [
+          {
+            "Measure": {
+              "Expression": {
+                "SourceRef": {
+                  "Entity": "fakt_ladevorgang"
+                }
+              },
+              "Property": "Marge"
+            }
+          }
+        ]
+      },
+      {
+        "name": "b7730a51001802eecc19",
+        "fields": [
+          {
+            "Measure": {
+              "Expression": {
+                "SourceRef": {
+                  "Entity": "fakt_ladevorgang"
+                }
+              },
+              "Property": "Marge %"
+            }
+          }
+        ]
+      },
+      {
+        "name": "c077d7e3cb7802d23686",
+        "fields": []
+      }
+    ],
+    "layout": {
+      "related": {
+        "version": 1
+      }
+    }
+  }
+}

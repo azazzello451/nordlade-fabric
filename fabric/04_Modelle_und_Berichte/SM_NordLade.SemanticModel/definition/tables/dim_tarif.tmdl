@@ -1,0 +1,51 @@
+table dim_tarif
+	lineageTag: b587f7da-dc4c-4b7d-82c5-e77741d723c7
+	sourceLineageTag: [gold].[dim_tarif]
+
+	column tarif_sk
+		dataType: int64
+		formatString: 0
+		lineageTag: cd835d4d-7b97-4c64-9223-1204331d8f80
+		sourceLineageTag: tarif_sk
+		summarizeBy: none
+		sourceColumn: tarif_sk
+
+		annotation SummarizationSetBy = Automatic
+
+	column tarif_id
+		dataType: string
+		lineageTag: b8eb8dcf-6611-4d3e-a944-6aa68224fa6c
+		sourceLineageTag: tarif_id
+		summarizeBy: none
+		sourceColumn: tarif_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column name
+		dataType: string
+		lineageTag: fa95e9b8-7bad-4cd9-924c-f268b33c3943
+		sourceLineageTag: name
+		summarizeBy: none
+		sourceColumn: name
+
+		annotation SummarizationSetBy = Automatic
+
+	column preis_pro_kwh
+		dataType: decimal
+		formatString: \$#,0.###############;(\$#,0.###############);\$#,0.###############
+		lineageTag: 4797f14e-6195-4ab5-b744-bbad41259b9b
+		sourceLineageTag: preis_pro_kwh
+		summarizeBy: none
+		sourceColumn: preis_pro_kwh
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"currencyCulture":"en-US"}
+
+	partition dim_tarif = entity
+		mode: directLake
+		source
+			entityName: dim_tarif
+			schemaName: gold
+			expressionSource: 'DirectLake - Lakehouse_NordLade'
+

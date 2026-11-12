@@ -1,0 +1,87 @@
+table dim_station
+	lineageTag: b98fc1a1-cdf5-48f0-9ebe-b20a22d6f2cb
+	sourceLineageTag: [gold].[dim_station]
+
+	column station_sk
+		dataType: int64
+		formatString: 0
+		lineageTag: 8f43ed15-d112-4422-86d7-159f8b6bc4fa
+		sourceLineageTag: station_sk
+		summarizeBy: none
+		sourceColumn: station_sk
+
+		annotation SummarizationSetBy = Automatic
+
+	column station_id
+		dataType: string
+		lineageTag: 6c55b612-44d1-4cf5-baea-9984782e92e9
+		sourceLineageTag: station_id
+		summarizeBy: none
+		sourceColumn: station_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column name
+		dataType: string
+		lineageTag: d71356aa-46e9-439c-8b8e-a9e33ce16b8e
+		sourceLineageTag: name
+		summarizeBy: none
+		sourceColumn: name
+
+		annotation SummarizationSetBy = Automatic
+
+	column region
+		dataType: string
+		lineageTag: ceaf2281-7fd1-4c38-809a-7fe5bbc06e35
+		sourceLineageTag: region
+		summarizeBy: none
+		sourceColumn: region
+
+		annotation SummarizationSetBy = Automatic
+
+	column betreiber
+		dataType: string
+		lineageTag: a611cfa1-4d59-469b-a4a9-62d7d99d0e86
+		sourceLineageTag: betreiber
+		summarizeBy: none
+		sourceColumn: betreiber
+
+		annotation SummarizationSetBy = Automatic
+
+	column gueltig_von
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: a699f04a-dfbe-4a03-8e2f-9607fdb0cf58
+		sourceLineageTag: gueltig_von
+		summarizeBy: none
+		sourceColumn: gueltig_von
+
+		annotation SummarizationSetBy = Automatic
+
+	column gueltig_bis
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: b5d16061-b7c4-4d8b-a237-cbd041d45b20
+		sourceLineageTag: gueltig_bis
+		summarizeBy: none
+		sourceColumn: gueltig_bis
+
+		annotation SummarizationSetBy = Automatic
+
+	column ist_aktuell
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		lineageTag: a3e07f90-16be-4f35-ad0c-bd161cd65b1b
+		sourceLineageTag: ist_aktuell
+		summarizeBy: none
+		sourceColumn: ist_aktuell
+
+		annotation SummarizationSetBy = Automatic
+
+	partition dim_station = entity
+		mode: directLake
+		source
+			entityName: dim_station
+			schemaName: gold
+			expressionSource: 'DirectLake - Lakehouse_NordLade'
+

@@ -1,0 +1,227 @@
+table fakt_ladevorgang
+	lineageTag: 50047ae3-5980-4615-8b4f-d1349b1a059c
+	sourceLineageTag: [gold].[fakt_ladevorgang]
+
+	measure Umsatz = SUM ( fakt_ladevorgang[umsatz_eur] )
+		formatString: \$#,0.###############;(\$#,0.###############);\$#,0.###############
+		lineageTag: b92117aa-a7d6-49df-b52b-3495f26a6b49
+
+		changedProperty = Name
+
+		annotation PBI_FormatHint = {"currencyCulture":"en-US"}
+
+	measure 'Energie kWh' = SUM ( fakt_ladevorgang[energie_kwh] )
+		formatString: #,0
+		lineageTag: d9fa0bd5-d9d2-4cd5-9e30-323295e1ee7d
+
+		changedProperty = Name
+
+		changedProperty = FormatString
+
+		annotation PBI_FormatHint = {"isDecimal":true}
+
+	measure Ladevorgänge = COUNTROWS ( fakt_ladevorgang )
+		formatString: 0
+		lineageTag: b3936831-78e5-4a1a-80d6-11a345f6ac44
+
+		changedProperty = Name
+
+	measure Marge = SUM ( fakt_ladevorgang[marge_eur] )
+		formatString: \$#,0.###############;(\$#,0.###############);\$#,0.###############
+		lineageTag: 7df4311d-e0f9-4e6c-b963-e8701bccd2a2
+
+		changedProperty = Name
+
+		annotation PBI_FormatHint = {"currencyCulture":"en-US"}
+
+	measure 'Marge %' = DIVIDE ( [Marge], [Umsatz] )
+		lineageTag: 3a2ae663-9565-413a-8107-854352dcb15f
+
+		changedProperty = Name
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Ø Dauer Min' = AVERAGE ( fakt_ladevorgang[dauer_minuten] )
+		lineageTag: efe58864-e992-462c-bb0a-26f820c3c3eb
+
+		changedProperty = Name
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Ø Preis je kWh' = DIVIDE ( [Umsatz], [Energie kWh] )
+		lineageTag: c6b425f8-2e9b-4005-b94d-dd263e5392de
+
+		changedProperty = Name
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Umsatz Vormonat' = CALCULATE ( [Umsatz], DATEADD ( dim_datum[datum], -1, MONTH ) )
+		formatString: \$#,0.###############;(\$#,0.###############);\$#,0.###############
+		lineageTag: cff42092-bd72-48b8-bc24-db5be01b8ac2
+
+		changedProperty = Name
+
+		annotation PBI_FormatHint = {"currencyCulture":"en-US"}
+
+	measure 'Umsatz ggü. Vormonat %' = DIVIDE ( [Umsatz] - [Umsatz Vormonat], [Umsatz Vormonat] )
+		lineageTag: 573ed214-6460-4719-9190-c7c27757ce89
+
+		changedProperty = Name
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column ladevorgang_id
+		dataType: string
+		isHidden
+		lineageTag: 3980e032-3291-430f-93e6-95522b8679e8
+		sourceLineageTag: ladevorgang_id
+		summarizeBy: none
+		sourceColumn: ladevorgang_id
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column datum_key
+		dataType: int64
+		formatString: 0
+		lineageTag: 3d626d64-71d2-477c-924c-e33049ae81ef
+		sourceLineageTag: datum_key
+		summarizeBy: none
+		sourceColumn: datum_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column kunde_sk
+		dataType: int64
+		formatString: 0
+		lineageTag: 4a877905-9a9c-41a0-9f7d-178a88d22455
+		sourceLineageTag: kunde_sk
+		summarizeBy: none
+		sourceColumn: kunde_sk
+
+		annotation SummarizationSetBy = Automatic
+
+	column station_sk
+		dataType: int64
+		formatString: 0
+		lineageTag: 69d6d775-09b1-47a0-a68f-366ba78be08e
+		sourceLineageTag: station_sk
+		summarizeBy: none
+		sourceColumn: station_sk
+
+		annotation SummarizationSetBy = Automatic
+
+	column tarif_sk
+		dataType: int64
+		formatString: 0
+		lineageTag: c1760788-87b0-4f1c-8c87-f400429477dd
+		sourceLineageTag: tarif_sk
+		summarizeBy: none
+		sourceColumn: tarif_sk
+
+		annotation SummarizationSetBy = Automatic
+
+	column ladepunkt_id
+		dataType: string
+		lineageTag: ad0fdb89-f544-47eb-a95d-989183752dd2
+		sourceLineageTag: ladepunkt_id
+		summarizeBy: none
+		sourceColumn: ladepunkt_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column start_zeit
+		dataType: dateTime
+		isHidden
+		formatString: General Date
+		lineageTag: c98deb1b-6e7f-46fb-882f-e0d82b572522
+		sourceLineageTag: start_zeit
+		summarizeBy: none
+		sourceColumn: start_zeit
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column ende_zeit
+		dataType: dateTime
+		isHidden
+		formatString: General Date
+		lineageTag: 747b7f32-ce5a-4d03-9eb5-224098713269
+		sourceLineageTag: ende_zeit
+		summarizeBy: none
+		sourceColumn: ende_zeit
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column dauer_minuten
+		dataType: int64
+		formatString: 0
+		lineageTag: 61bb04e1-af73-4297-a59a-c41758a2f7a3
+		sourceLineageTag: dauer_minuten
+		summarizeBy: sum
+		sourceColumn: dauer_minuten
+
+		annotation SummarizationSetBy = Automatic
+
+	column energie_kwh
+		dataType: decimal
+		formatString: \$#,0.###############;(\$#,0.###############);\$#,0.###############
+		lineageTag: c7af3022-c371-4d97-832f-98a30007d9d4
+		sourceLineageTag: energie_kwh
+		summarizeBy: sum
+		sourceColumn: energie_kwh
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"currencyCulture":"en-US"}
+
+	column umsatz_eur
+		dataType: decimal
+		isHidden
+		formatString: \$#,0.###############;(\$#,0.###############);\$#,0.###############
+		lineageTag: 7d3b0db8-8652-4db5-84fe-fdfb27521421
+		sourceLineageTag: umsatz_eur
+		summarizeBy: sum
+		sourceColumn: umsatz_eur
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"currencyCulture":"en-US"}
+
+	column marge_eur
+		dataType: decimal
+		formatString: \$#,0.###############;(\$#,0.###############);\$#,0.###############
+		lineageTag: 02ee64a0-1cce-40ce-9813-227ae2336eaf
+		sourceLineageTag: marge_eur
+		summarizeBy: sum
+		sourceColumn: marge_eur
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"currencyCulture":"en-US"}
+
+	column lieferung_id
+		dataType: string
+		isHidden
+		lineageTag: 277d1510-cf2e-4abd-967a-149f9fd16689
+		sourceLineageTag: lieferung_id
+		summarizeBy: none
+		sourceColumn: lieferung_id
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	partition fakt_ladevorgang = entity
+		mode: directLake
+		source
+			entityName: fakt_ladevorgang
+			schemaName: gold
+			expressionSource: 'DirectLake - Lakehouse_NordLade'
+

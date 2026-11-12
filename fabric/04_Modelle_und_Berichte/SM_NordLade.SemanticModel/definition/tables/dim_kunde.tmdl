@@ -1,0 +1,78 @@
+table dim_kunde
+	lineageTag: ff221ad2-a00f-4798-b2a8-72aa71ecefbb
+	sourceLineageTag: [gold].[dim_kunde]
+
+	column kunde_sk
+		dataType: int64
+		formatString: 0
+		lineageTag: 5f6e19be-f1d3-4c07-8242-9e8a77c5e333
+		sourceLineageTag: kunde_sk
+		summarizeBy: none
+		sourceColumn: kunde_sk
+
+		annotation SummarizationSetBy = Automatic
+
+	column kunde_id
+		dataType: string
+		lineageTag: 392cc6d0-85b6-45de-b961-2a3fd8c21d04
+		sourceLineageTag: kunde_id
+		summarizeBy: none
+		sourceColumn: kunde_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column heimatregion
+		dataType: string
+		lineageTag: e7a2fd87-6a42-4b10-ba22-1b35aaa08df2
+		sourceLineageTag: heimatregion
+		summarizeBy: none
+		sourceColumn: heimatregion
+
+		annotation SummarizationSetBy = Automatic
+
+	column tarif_id
+		dataType: string
+		lineageTag: ddc34ee6-039a-4f9e-ad1e-cd6b48b2e1a5
+		sourceLineageTag: tarif_id
+		summarizeBy: none
+		sourceColumn: tarif_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column gueltig_von
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: 7834c2f3-96a8-4655-9998-877a37e52df5
+		sourceLineageTag: gueltig_von
+		summarizeBy: none
+		sourceColumn: gueltig_von
+
+		annotation SummarizationSetBy = Automatic
+
+	column gueltig_bis
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: a96f8689-810d-407d-966b-36c9e4ac583c
+		sourceLineageTag: gueltig_bis
+		summarizeBy: none
+		sourceColumn: gueltig_bis
+
+		annotation SummarizationSetBy = Automatic
+
+	column ist_aktuell
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		lineageTag: a2ec2c40-76d0-438d-a3d4-d4124084cbcd
+		sourceLineageTag: ist_aktuell
+		summarizeBy: none
+		sourceColumn: ist_aktuell
+
+		annotation SummarizationSetBy = Automatic
+
+	partition dim_kunde = entity
+		mode: directLake
+		source
+			entityName: dim_kunde
+			schemaName: gold
+			expressionSource: 'DirectLake - Lakehouse_NordLade'
+
