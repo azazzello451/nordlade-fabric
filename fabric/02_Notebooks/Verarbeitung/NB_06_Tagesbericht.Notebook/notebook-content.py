@@ -79,52 +79,46 @@ print("Lauf:", lauf_id)
 # =====================================================
 # Zelle 3a (NB_06): Zahlen für den Bericht sammeln
 #
-# daten_sammeln liest und gibt als dict zurück:
-#   zu_tun     gesperrte Lieferungen (mit Grund, seit wann)
-#   fehler     offene Fehlerzeilen; davon älter als
-#              FRIST_TAGE (= Erinnerung)
-#   neu        Lieferungen, die noch in keinem Bericht
-#              standen (gemeldet_am leer, Status fertig)
-#   wartet     Lieferungen noch im Status schema_ok
-#   anteil     % der neuen Ladevorgangs-Zeilen, die nach
-#              Silber durften (gesperrte zählen als 0)
-#   technik    Schritte mit Status „fehler“ (24 Std.)
-#   stand      Zeile aus gold.datenstand
+# daten_sammeln liest Register, Fehlerzeilen und
+# Datenstand und gibt zurück:
+#   zu_tun   gesperrte Lieferungen
+#   neu      Lieferungen, die in keinem Bericht standen
+#   wartet   Lieferungen, die noch auf Prüfung warten
+#   anteil   % der neuen Ladevorgangs-Zeilen, die in
+#            Ordnung waren (gesperrte zählen als 0)
+#   fehler   offene Fehlerzeilen, davon überfällig
+#   stand    Zeile aus gold.datenstand
 # =====================================================
 
 from pyspark.sql import functions as F
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-HEUTE = datetime.now(ZoneInfo("Europe/Berlin")).date()
+BERLIN = ZoneInfo("Europe/Berlin")
+HEUTE = datetime.now(BERLIN).date()
 
 
 def daten_sammeln():
-    """Liest Register, Fehlerzeilen, Logbuch und Datenstand."""
     reg = spark.table("qualitaet.lieferungen")
-    spalten = ["lieferung_id", "quelle", "lieferdatum", "status", "grund", "score", "zeilen", "fehlerzeilen", "eingang_am"]
+    sp = ["lieferung_id", "quelle", "lieferdatum", "status", "grund", "zeilen", "fehlerzeilen", "eingang_am"]
+    hole = lambda bed: [r.asDict() for r in reg.filter(bed).orderBy("quelle", "lieferdatum").select(*sp).collect()]
 
-    zu_tun = [r.asDict() for r in reg.filter(F.col("status").isin(GESPERRT)).orderBy("lieferdatum").select(*spalten).collect()]
-    neu = [r.asDict() for r in reg.filter(F.col("gemeldet_am").isNull() & (F.col("status") != SCHEMA_OK))
-                                  .orderBy("quelle", "lieferdatum").select(*spalten).collect()]
-    wartet = [r.asDict() for r in reg.filter(F.col("status") == SCHEMA_OK).orderBy("lieferdatum").select(*spalten).collect()]
-
+    neu = hole(F.col("gemeldet_am").isNull() & (F.col("status") != SCHEMA_OK))
     lv = [n for n in neu if n["quelle"] == "ladevorgaenge" and n["status"] != ERSETZT]
     alle = sum(n["zeilen"] or 0 for n in lv)
     gut = sum((n["zeilen"] or 0) - (n["fehlerzeilen"] or 0) for n in lv if n["status"] == IN_SILBER)
 
-    offen = spark.table("qualitaet.fehlerzeilen").filter("status = 'offen'")
     grenze = datetime.now() - timedelta(days=FRIST_TAGE)
-    fehler = offen.agg(F.count("*").alias("offen"), F.min("erkannt_am").alias("aelteste"),
-                       F.sum((F.col("erkannt_am") < F.lit(grenze)).cast("int")).alias("ueberfaellig")).first().asDict()
-
-    technik = [r.asDict() for r in spark.table("steuerung.laeufe")
-               .filter((F.col("status") == "fehler") & (F.col("start_zeit") > F.lit(datetime.now() - timedelta(hours=24))))
-               .select("schritt", "meldung").collect()]
+    fehler = (spark.table("qualitaet.fehlerzeilen").filter("status = 'offen'")
+              .agg(F.count("*").alias("offen"),
+                   F.sum((F.col("erkannt_am") < F.lit(grenze)).cast("int")).alias("ueberfaellig"))
+              .first().asDict())
     stand = spark.table("gold.datenstand").first()
 
-    return {"zu_tun": zu_tun, "neu": neu, "wartet": wartet, "fehler": fehler, "technik": technik,
-            "anteil": round(100 * gut / alle, 1) if alle else None, "stand": stand.asDict() if stand else {}}
+    return {"zu_tun": hole(F.col("status").isin(GESPERRT)), "neu": neu,
+            "wartet": hole(F.col("status") == SCHEMA_OK), "fehler": fehler,
+            "anteil": round(100 * gut / alle, 1) if alle else None,
+            "stand": stand.asDict() if stand else {}}
 
 
 print("✓ daten_sammeln bereit")
@@ -139,39 +133,51 @@ print("✓ daten_sammeln bereit")
 # CELL ********************
 
 # =====================================================
-# Zelle 3b (NB_06): Trend der Ladevorgänge
-#
-# trend_pruefen schaut auf die letzten Ladevorgangs-
-# Lieferungen und warnt (sperrt nicht):
-#   Score TRENDLAENGE-mal in Folge gefallen
-#   Zeilen unter MENGE_MIN_ANTEIL des Üblichen
-#     (üblich = Median der 7 Lieferungen davor)
-# Gibt die letzten Scores und die Warnungen zurück.
+# Zelle 3b (NB_06): Qualität und Technik prüfen
+# trend_pruefen: Qualität TRENDLAENGE-mal gesunken oder
+#   zu wenige Ladevorgänge geliefert? → Warnung
+# technik_pruefen: Welcher Schritt ist bei seinem
+#   LETZTEN Lauf abgebrochen? Lief die Nacht bis Gold?
+# Beide liefern fertige Sätze für den Bericht.
 # =====================================================
 
 from statistics import median
+from pyspark.sql.window import Window
+
+SCHRITTE = {"NB_02_Dateien_registrieren_Schema_pruefen": "Die Eingangsprüfung (NB_02)",
+            "NB_03_Stammdaten_nach_Silber": "Die Prüfung der Stammdaten (NB_03)",
+            "NB_04_Ladevorgaenge_pruefen_nach_Silber": "Die Prüfung der Ladevorgänge (NB_04)",
+            "NB_05_Gold_aufbauen": "Der Aufbau der Berichtstabellen (NB_05)"}
+zahl = lambda x: f"{x:.1f}".replace(".", ",")
+zeit = lambda t: t.replace(tzinfo=timezone.utc).astimezone(BERLIN).strftime("%d.%m. um %H:%M")
 
 
 def trend_pruefen():
-    """Gibt (scores der letzten 7 Tage, Liste der Warnungen) zurück."""
-    letzte = (spark.table("qualitaet.lieferungen")
-              .filter((F.col("quelle") == "ladevorgaenge") & F.col("status").isin(IN_SILBER, SCORE_NIEDRIG))
-              .orderBy(F.col("lieferdatum").desc()).limit(8)
-              .select("lieferdatum", "score", "zeilen").collect())[::-1]
-    warnungen = []
-    if len(letzte) > TRENDLAENGE:
-        s = [float(r["score"]) for r in letzte[-(TRENDLAENGE + 1):]]
-        if all(b < a for a, b in zip(s, s[1:])):
-            warnungen.append(f"Score {TRENDLAENGE}× in Folge gefallen ({' → '.join(f'{x:.1f}' for x in s)})")
-    if len(letzte) >= 2:
-        ueblich = median(r["zeilen"] for r in letzte[:-1])
-        if letzte[-1]["zeilen"] < MENGE_MIN_ANTEIL * ueblich:
-            warnungen.append(f"nur {letzte[-1]['zeilen']} Zeilen am {letzte[-1]['lieferdatum']:%d.%m.} "
-                             f"(üblich ca. {ueblich:.0f})")
-    return [(r["lieferdatum"], float(r["score"])) for r in letzte[-7:]], warnungen
+    r = (spark.table("qualitaet.lieferungen")
+         .filter((F.col("quelle") == "ladevorgaenge") & F.col("status").isin(IN_SILBER, SCORE_NIEDRIG))
+         .orderBy(F.col("lieferdatum").desc()).limit(8).collect())[::-1]
+    w, s = [], [float(x["score"]) for x in r[-(TRENDLAENGE + 1):]]
+    if len(s) > TRENDLAENGE and all(b < a for a, b in zip(s, s[1:])):
+        w.append(f"Die Qualität ist {TRENDLAENGE}× in Folge gesunken ({' → '.join(map(zahl, s))}).")
+    if len(r) >= 2 and r[-1]["zeilen"] < MENGE_MIN_ANTEIL * median(x["zeilen"] for x in r[:-1]):
+        w.append(f"Am {r[-1]['lieferdatum']:%d.%m.} kamen nur {r[-1]['zeilen']} Ladevorgänge.")
+    return [(x["lieferdatum"], float(x["score"])) for x in r[-7:]], w
 
 
-print("✓ trend_pruefen bereit")
+def technik_pruefen():
+    lg = spark.table("steuerung.laeufe").filter(F.col("schritt").isin(list(SCHRITTE)))
+    nr = F.row_number().over(Window.partitionBy("schritt").orderBy(F.col("start_zeit").desc()))
+    s = [f"{SCHRITTE[k['schritt']]} ist am {zeit(k['start_zeit'])} abgebrochen und seitdem nicht "
+         f"wieder gelaufen. (Fehler: {(k['meldung'] or '')[:80]})"
+         for k in lg.withColumn("nr", nr).filter("nr = 1 AND status = 'fehler'").collect()]
+    gold = lg.filter("schritt = 'NB_05_Gold_aufbauen' AND status = 'erfolgreich'").agg(F.max("ende_zeit")).first()[0]
+    if not s and not (gold and gold > datetime.now() - timedelta(hours=24)):
+        s.append("Die nächtliche Verarbeitung ist in den letzten 24 Std. nicht durchgelaufen"
+                 + (f" (zuletzt am {zeit(gold)})." if gold else "."))
+    return s
+
+
+print("✓ trend_pruefen und technik_pruefen bereit")
 
 # METADATA ********************
 
@@ -183,50 +189,47 @@ print("✓ trend_pruefen bereit")
 # CELL ********************
 
 # =====================================================
-# Zelle 3c (NB_06): Bericht als HTML zusammensetzen
-# Reihenfolge: Zu tun → Neu → Trend → Datenstand.
-# Gibt (betreff, html, punkte) zurück.
+# Zelle 3c (NB_06): Bericht in Klartext
+# Reihenfolge: Zu tun → Neu → Qualität → Stand.
 # =====================================================
 
-from html import escape
+GRUND = {SCHEMA_GESPERRT: "Datei fehlerhaft", SCHLUESSEL_FEHLER: "Schlüssel fehlen/doppelt",
+         SCORE_NIEDRIG: "zu viele fehlerhafte Zeilen"}
+dt_ = lambda x: f"{x:%d.%m.%Y}" if x else "–"
+ul = lambda z: "<ul>" + "".join(f"<li>{x}</li>" for x in z) + "</ul>"
 
 
-def _d(x):
-    return f"{x:%d.%m.%Y}" if x else "–"
-
-
-def _liste(z):
-    return "<ul>" + "".join(f"<li>{x}</li>" for x in z) + "</ul>" if z else "<p>–</p>"
-
-
-def bericht_bauen(d, scores, warnungen):
-    tun = [f"⚠ {z['quelle']} {_d(z['lieferdatum'])} – <b>{z['status']}</b>: {escape(z['grund'] or '')}"
-           f" – seit {(HEUTE - z['eingang_am'].date()).days} Tag(en)" for z in d["zu_tun"]]
+def bericht_bauen(d, technik, scores, warnungen):
+    tun = [f"Lieferung <b>{z['quelle']} vom {dt_(z['lieferdatum'])}</b> ist gesperrt ({GRUND[z['status']]}), "
+           f"seit {(HEUTE - z['eingang_am'].date()).days} Tag(en). Bitte mit dem Partner klären."
+           for z in d["zu_tun"]]
+    if not d["neu"] and not d["wartet"]:
+        tun.append("Heute ist keine neue Lieferung eingegangen – bitte beim Partner nachfragen.")
     if d["fehler"]["ueberfaellig"]:
-        tun.append(f"⚠ {d['fehler']['ueberfaellig']} Fehlerzeilen länger als {FRIST_TAGE} Tage offen")
-    tun += [f"⚠ Trend: {escape(w)}" for w in warnungen]
-    tun += [f"⚠ Technik: {t['schritt']} – {escape((t['meldung'] or '')[:200])}" for t in d["technik"]]
+        tun.append(f"{d['fehler']['ueberfaellig']} fehlerhafte Zeilen sind über {FRIST_TAGE} Tage ungeklärt.")
+    tun += warnungen + [f"Technik: {t} Der Data Engineer ist informiert." for t in technik]
 
     q = {}
-    for n in d["neu"]:
-        q.setdefault(n["quelle"], []).append(n["status"])
-    neu = [f"{k}: {len(s)} ({', '.join(f'{s.count(x)} {x}' for x in sorted(set(s)))})" for k, s in q.items()]
-    neu += [f"wartet noch: {w['quelle']} {_d(w['lieferdatum'])}" for w in d["wartet"]]
+    for x in d["neu"]:
+        q.setdefault(x["quelle"], []).append(x["status"])
+    neu = [f"{k}: {len(s)} Lieferung(en), {s.count(IN_SILBER)} übernommen" for k, s in q.items()]
+    neu += [f"{w['quelle']} vom {dt_(w['lieferdatum'])} wartet noch auf Prüfung" for w in d["wartet"]]
+    if d["anteil"] is not None:
+        neu.append(f"{zahl(d['anteil'])} % der gelieferten Ladevorgänge waren fehlerfrei.")
 
-    st = d["stand"]
+    st, n = d["stand"], len(tun)
     betreff = f"NordLade Tagesbericht {HEUTE:%d.%m.%Y} – " + (
-        f"⚠ {len(tun)} Punkt(e) zu erledigen" if tun else "✓ alles in Ordnung")
-    teile = [
-        f"<h2>{escape(betreff)}</h2><h3>Zu tun</h3>", _liste(tun) if tun else "<p>✓ nichts zu tun</p>",
-        f"<p>Offene Fehlerzeilen insgesamt: {d['fehler']['offen']}</p>",
-        "<h3>Neu seit dem letzten Bericht</h3>", _liste(neu),
-        f"<p>Durchgelassen: <b>{d['anteil'] or '–'} %</b> der neuen Ladevorgangs-Zeilen</p>",
-        "<h3>Trend</h3><p>" + (" · ".join(f"{t:%d.%m.} {s:.1f}" for t, s in scores) or "–"),
-        (" – ⚠ siehe oben" if warnungen else " – ✓ stabil") + "</p><h3>Datenstand</h3>",
-        f"<p>Vollständig bis Ladetag <b>{_d(st.get('vollstaendig_bis'))}</b>, "
-        f"nicht enthalten: {escape(st.get('nicht_enthalten') or '–')}</p>",
-    ]
-    return betreff, "\n".join(teile), len(tun)
+        f"⚠ {n} Punkt{'e' if n > 1 else ''} zu erledigen" if n else "✓ alles in Ordnung")
+    fehlt = st.get("nicht_enthalten")
+    html = "".join([
+        f"<h2>{betreff}</h2><h3>Zu tun</h3>", ul("⚠ " + t for t in tun) if tun else "<p>✓ Nichts zu tun.</p>",
+        "<h3>Neu seit dem letzten Bericht</h3>", ul(neu) if neu else "<p>Heute keine neuen Daten.</p>",
+        "<h3>Qualität der letzten Lieferungen (100 = fehlerfrei)</h3><p>",
+        " · ".join(f"{t:%d.%m.} {zahl(s)}" for t, s in scores), f" – {'sinkt' if warnungen else 'stabil'}.<br>",
+        f"{d['fehler']['offen']} fehlerhafte Zeilen warten auf Klärung.</p><h3>Stand der Berichte</h3>",
+        f"<p>Power BI enthält alle Ladevorgänge bis einschließlich {dt_(st.get('vollstaendig_bis'))}. ",
+        f"Es fehlen: {fehlt}.</p>" if fehlt else "Es fehlt nichts.</p>"])
+    return betreff, html, n
 
 
 print("✓ bericht_bauen bereit")
@@ -289,11 +292,13 @@ print("✓ bericht_ablegen bereit")
 # =====================================================
 # Zelle 4 (NB_06): Tagesbericht erstellen
 #
-# Sammeln (3a) → Trend (3b) → Bericht (3c) → ablegen (3d).
+# Sammeln (3a) → Qualität und Technik (3b) → Bericht (3c)
+# → ablegen (3d).
 # „Dringend“ für die Pipeline:
 #   steward   neue Lieferung mit schluessel_fehler –
-#             Stammdaten gesperrt hält die ganze Strecke an
-#   engineer  ein technischer Schritt ist gescheitert
+#             gesperrte Stammdaten halten alles an
+#   engineer  ein Schritt ist abgebrochen oder die
+#             Nacht ist nicht durchgelaufen
 # Logbuch: Start und Ende in steuerung.laeufe.
 # =====================================================
 
@@ -302,12 +307,13 @@ lauf_starten(lauf_id, SCHRITT)
 
 try:
     daten = daten_sammeln()
+    technik = technik_pruefen()
     scores, warnungen = trend_pruefen()
-    betreff, html, punkte = bericht_bauen(daten, scores, warnungen)
+    betreff, html, punkte = bericht_bauen(daten, technik, scores, warnungen)
     datei = bericht_ablegen(html, daten["neu"])
     dringend = {
         "steward": any(n["status"] == SCHLUESSEL_FEHLER for n in daten["neu"]),
-        "engineer": bool(daten["technik"]),
+        "engineer": bool(technik),
     }
     lauf_beenden(lauf_id, SCHRITT, "erfolgreich", lieferungen=len(daten["neu"]),
                  meldung=f"{betreff} → {datei}")

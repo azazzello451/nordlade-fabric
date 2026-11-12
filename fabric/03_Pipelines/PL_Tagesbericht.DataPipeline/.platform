@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "DataPipeline",
+    "displayName": "PL_Tagesbericht",
+    "description": "Erstellt jeden Morgen den Tagesbericht für den Data Steward und schickt ihn per Mail. Läuft unabhängig von PL_Verarbeitung, damit der Bericht auch kommt, wenn die Verarbeitung gescheitert ist. Bei technischen Problemen geht zusätzlich eine Mail an den Data Engineer. (Mailversand in der Demo deaktiviert)"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "cb04c986-9794-898c-41ad-eefaf3fcd675"
+  }
+}

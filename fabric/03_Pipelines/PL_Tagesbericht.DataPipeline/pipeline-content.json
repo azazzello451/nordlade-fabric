@@ -1,0 +1,98 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "type": "TridentNotebook",
+        "typeProperties": {
+          "notebookId": "1bf27930-7c02-8e33-4ec2-0531871277fd",
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "parameters": {
+            "lauf_id": {
+              "value": "@pipeline().RunId",
+              "type": "string"
+            }
+          }
+        },
+        "policy": {
+          "timeout": "0.00:15:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Tagesbericht",
+        "description": "Erstellt den Tagesbericht (NB_06): zu tun, neu, Qualität, Stand der Berichte. Legt ihn als HTML-Datei ab und gibt Betreff und Text an die Mail-Aktivitäten weiter.",
+        "dependsOn": []
+      },
+      {
+        "type": "Office365Email",
+        "typeProperties": {
+          "body": "<p>@{json(activity('Tagesbericht').output.result.exitValue).html}</p>",
+          "to": "@json(activity('Tagesbericht').output.result.exitValue).an",
+          "subject": "@json(activity('Tagesbericht').output.result.exitValue).betreff"
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Bericht_senden",
+        "description": "Schickt den Tagesbericht per Mail an den Data Steward. Betreff, Empfänger und Text kommen aus der Aktivität Tagesbericht (NB_06). In der Demo deaktiviert, weil kein Microsoft-365-Postfach eingerichtet ist; der Bericht liegt trotzdem als HTML-Datei unter Files/berichte.",
+        "state": "Inactive",
+        "onInactiveMarkAs": "Succeeded",
+        "dependsOn": [
+          {
+            "activity": "Tagesbericht",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "IfCondition",
+        "typeProperties": {
+          "expression": {
+            "value": "@json(activity('Tagesbericht').output.result.exitValue).dringend_engineer",
+            "type": "Expression"
+          },
+          "ifTrueActivities": [
+            {
+              "type": "Office365Email",
+              "typeProperties": {
+                "body": "<p>@{json(activity('Tagesbericht').output.result.exitValue).html}</p>",
+                "to": "@json(activity('Tagesbericht').output.result.exitValue).an_engineer",
+                "subject": "@concat('⚠ NordLade Technik: ', json(activity('Tagesbericht').output.result.exitValue).betreff)"
+              },
+              "policy": {
+                "timeout": "0.12:00:00",
+                "retry": 0,
+                "retryIntervalInSeconds": 30,
+                "secureInput": false,
+                "secureOutput": false
+              },
+              "name": "Alarm_Engineer",
+              "description": "chickt dem Data Engineer sofort eine Mail mit dem Tagesbericht, wenn ein technischer Schritt gescheitert ist. In der Demo deaktiviert.",
+              "state": "Inactive",
+              "onInactiveMarkAs": "Succeeded",
+              "dependsOn": []
+            }
+          ],
+          "ifFalseActivities": []
+        },
+        "name": "Engineer_dringend",
+        "description": "Prüft, ob der Tagesbericht ein technisches Problem gefunden hat (Schritt abgebrochen oder Nacht nicht durchgelaufen). Wenn ja, bekommt der Data Engineer zusätzlich eine eigene Mail",
+        "dependsOn": [
+          {
+            "activity": "Tagesbericht",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
