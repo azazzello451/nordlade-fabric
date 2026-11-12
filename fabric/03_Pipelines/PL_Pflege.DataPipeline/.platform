@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "DataPipeline",
+    "displayName": "PL_Pflege",
+    "description": "Startet sonntags NB_08: fasst kleine Dateien zusammen und löscht alte Tabellenversionen, alte Logbuch-Einträge und alte Bronze-Ordner."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "3d2efaf3-7d50-a9e7-4388-e2c7035a5238"
+  }
+}

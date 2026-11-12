@@ -147,7 +147,8 @@ from pyspark.sql.window import Window
 SCHRITTE = {"NB_02_Dateien_registrieren_Schema_pruefen": "Die Eingangsprüfung (NB_02)",
             "NB_03_Stammdaten_nach_Silber": "Die Prüfung der Stammdaten (NB_03)",
             "NB_04_Ladevorgaenge_pruefen_nach_Silber": "Die Prüfung der Ladevorgänge (NB_04)",
-            "NB_05_Gold_aufbauen": "Der Aufbau der Berichtstabellen (NB_05)"}
+            "NB_05_Gold_aufbauen": "Der Aufbau der Berichtstabellen (NB_05)",
+            "NB_08_Pflege": "Die wöchentliche Pflege (NB_08)"}
 zahl = lambda x: f"{x:.1f}".replace(".", ",")
 zeit = lambda t: t.replace(tzinfo=timezone.utc).astimezone(BERLIN).strftime("%d.%m. um %H:%M")
 

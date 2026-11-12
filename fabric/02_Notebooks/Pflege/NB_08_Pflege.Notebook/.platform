@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "NB_08_Pflege",
+    "description": "Wöchentliche Pflege: fasst kleine Dateien zusammen (Gold mit V-Order, Fakt nach Datum sortiert), löscht alte Tabellenversionen, alte Logbuch-Einträge und alte Bronze-Ordner, aber nie welche, die noch gesperrt sind oder auf Prüfung warten."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "19233166-f0d0-b0ce-47fd-7dd1ab8cd04b"
+  }
+}
