@@ -177,7 +177,7 @@ print("✓ uebersicht_zeigen bereit")
 # =====================================================
 # Zelle 3b (NB_07): Prüfen, was geht
 #
-# pruefen gibt (Problem, Aktion) zurück:
+# entscheidung_pruefen gibt (Problem, Aktion) zurück:
 #   gesperrt, Ladevorgänge  → Aktion "verwerfen"
 #   gesperrt, Stammdaten    → Problem: nie verwerfen,
 #     NB_03 braucht jeden Tag lückenlos
@@ -186,6 +186,7 @@ print("✓ uebersicht_zeigen bereit")
 #   sonst                   → Problem: nichts zu tun
 # Bemerkung ist immer Pflicht.
 # wer: Name der angemeldeten Person.
+# STAMMDATEN_QUELLEN kommt aus NB_00 (Zelle 3b).
 # Ändert nichts.
 # =====================================================
 
@@ -198,13 +199,13 @@ def wer():
         return "unbekannt"
 
 
-def pruefen(lieferung, offene_zeilen):
+def entscheidung_pruefen(lieferung, offene_zeilen):
     if not bemerkung.strip():
         return "Bitte eine Bemerkung eintragen: Was hat der Partner gesagt?", None
     if lieferung is None:
         return f"Lieferung {lieferung_id} gibt es nicht. Bitte die ID aus der Übersicht kopieren.", None
     if lieferung["status"] in GESPERRT:
-        if lieferung["quelle"] in STAMMDATEN:
+        if lieferung["quelle"] in STAMMDATEN_QUELLEN:
             return ("Stammdaten können nicht verworfen werden: Die Tage bauen aufeinander auf, "
                     "ohne diesen Tag steht die ganze Verarbeitung still. "
                     "Bitte beim Partner dringend eine korrigierte Version anfordern."), None
@@ -217,7 +218,7 @@ def pruefen(lieferung, offene_zeilen):
     return None, "abschliessen"
 
 
-print("✓ pruefen und wer bereit")
+print("✓ entscheidung_pruefen und wer bereit")
 
 # METADATA ********************
 
@@ -248,7 +249,7 @@ def ausfuehren():
     lieferung = treffer[0].asDict() if treffer else None
     offene_zeilen = spark.table("qualitaet.fehlerzeilen").filter(
         (F.col("lieferung_id") == lieferung_id) & (F.col("status") == "offen")).count()
-    problem, aktion = pruefen(lieferung, offene_zeilen)
+    problem, aktion = entscheidung_pruefen(lieferung, offene_zeilen)
     if problem:
         print(f"✗ {problem}\n  Es wurde nichts geändert.")
         return

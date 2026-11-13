@@ -125,7 +125,7 @@ print("✓ neue_dateien_finden bereit")
 # CELL ********************
 
 # =====================================================
-# Zelle 3b: Eine Datei prüfen
+# Zelle 3b (NB_02): Eine Datei prüfen
 #
 # datei_pruefen liest Fingerabdruck, Kopfzeile und
 # Zeilenzahl einer Datei und entscheidet:
@@ -136,6 +136,9 @@ print("✓ neue_dateien_finden bereit")
 #   sonst                                  → schema_ok
 # Ein neuer Name mit bekanntem Inhalt (z. B. v2 = v1)
 # gilt als normale neue Version.
+# BOM (unsichtbares Zeichen am Dateianfang, z. B. von
+# Excel): wird beim Lesen der Kopfzeile ignoriert
+# (utf-8-sig) und im Grund als Hinweis vermerkt.
 # Die Status-Namen kommen aus NB_00 (Zelle 8).
 # =====================================================
 
@@ -162,7 +165,9 @@ def datei_pruefen(datei, bekannte_dateien):
     zeile["version"] = int(teile["version"])
 
     # Kopfzeile und Zeilenzahl lesen
-    with open(LOKAL + datei["pfad"], encoding="utf-8") as f:
+    with open(LOKAL + datei["pfad"], "rb") as f:
+        bom = f.read(3) == b"\xef\xbb\xbf"
+    with open(LOKAL + datei["pfad"], encoding="utf-8-sig") as f:
         kopf = f.readline().strip().split(",")
         zeile["zeilen"] = sum(1 for z in f if z.strip())
 
@@ -194,7 +199,8 @@ def datei_pruefen(datei, bekannte_dateien):
         return {**zeile, "status": SCHEMA_GESPERRT, "verantwortlich": VERANTWORTLICH["data_steward"],
                 "grund": "Datei enthält keine Datenzeilen"}
 
-    return {**zeile, "status": SCHEMA_OK}
+    hinweis = "Hinweis: Datei mit BOM geliefert, toleriert" if bom else None
+    return {**zeile, "status": SCHEMA_OK, "grund": hinweis}
 
 
 print("✓ Prüfung einer Datei bereit")

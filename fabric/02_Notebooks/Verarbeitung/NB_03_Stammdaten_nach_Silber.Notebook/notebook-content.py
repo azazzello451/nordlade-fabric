@@ -84,25 +84,26 @@ print("Lauf:", lauf_id)
 # CELL ********************
 
 # =====================================================
-# Zelle 3a: Werkzeuge – Lieferung lesen und R5 prüfen
+# Zelle 3a (NB_03): Werkzeuge – Lieferung lesen und prüfen
 #
 # lieferung_lesen
 #   Liest eine Stammdaten-Datei aus Bronze mit den
 #   Spalten und Typen aus dem Datenvertrag (NB_00).
 #
 # r5_pruefen
-#   Prüft Regel R5 (Schlüssel leer oder doppelt) und
-#   schreibt jede fehlerhafte Zeile nach
-#   qualitaet.fehlerzeilen.
-#   Vorher werden alte Fehlerzeilen dieser Lieferung
-#   gelöscht – so ändert ein zweiter Lauf nichts.
+#   Prüft die Lieferung mit allen Stammdaten-Regeln
+#   aus dem Regelkatalog in NB_00 (heute: R5) und
+#   schreibt die Fehlerzeilen – beides erledigt
+#   pruefen_und_festhalten aus NB_00.
 #   Gibt die Zahl der fehlerhaften Zeilen zurück
 #   (steht danach im Register).
+#
+# STAMMDATEN: welche Spalte wie behandelt wird
+#   (SCD = Slowly Changing Dimension), für Zelle 3b.
 # =====================================================
 
 from pyspark.sql import functions as F
 
-# Welche Spalten sich wie verhalten (SCD = Slowly Changing Dimension)
 STAMMDATEN = {
     "kunden":    {"ohne": ["email"], "scd2": ["heimatregion", "tarif_id"], "scd1": ["name"]},
     "stationen": {"ohne": [],        "scd2": ["region", "betreiber"],     "scd1": ["name"]},
@@ -117,32 +118,9 @@ def lieferung_lesen(pfad, quelle):
 
 
 def r5_pruefen(df, lieferung):
-    """Prüft R5, schreibt die Fehlerzeilen, gibt die Fehlerzahl zurück."""
-    quelle = lieferung["quelle"]
-    schluessel = SCHLUESSEL[quelle]
-    geprueft = pruefe_stammdaten(df, quelle)            # Funktion aus NB_00
-    fehler = geprueft.filter(F.size("fehler") > 0)
-    anzahl_fehler = fehler.count()
-    lid = sql_text(lieferung["lieferung_id"])
-
-    spark.sql(f"DELETE FROM qualitaet.fehlerzeilen WHERE lieferung_id = {lid}")
-
-    if anzahl_fehler:
-        fach = [s for s, _ in DATENVERTRAG[quelle]]
-        (fehler
-            .select(
-                F.lit(lieferung["lieferung_id"]).alias("lieferung_id"),
-                F.lit(None).cast("string").alias("ladevorgang_id"),
-                F.lit("R5").alias("regel"),
-                F.concat(F.lit(f"{schluessel} leer oder doppelt: "),
-                         F.coalesce(F.col(schluessel), F.lit("(leer)"))).alias("grund"),
-                F.concat_ws(",", *[F.col(s).cast("string") for s in fach]).alias("rohzeile"),
-                F.current_timestamp().alias("erkannt_am"),
-                F.lit("offen").alias("status"),
-                F.lit(None).cast("timestamp").alias("geklaert_am"),
-                F.lit(None).cast("string").alias("bemerkung"))
-            .write.mode("append").saveAsTable("qualitaet.fehlerzeilen"))
-    return anzahl_fehler
+    """Prüft mit dem Regelkatalog, schreibt Fehlerzeilen, gibt die Fehlerzahl zurück."""
+    geprueft, ergebnis = pruefen_und_festhalten(df, lieferung)     # Funktion aus NB_00
+    return ergebnis["fehlerzeilen"]
 
 
 print("✓ lieferung_lesen und r5_pruefen bereit")

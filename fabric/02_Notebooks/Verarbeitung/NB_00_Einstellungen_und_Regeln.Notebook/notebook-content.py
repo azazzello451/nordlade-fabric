@@ -127,67 +127,48 @@ SCHLUESSEL = {
 # CELL ********************
 
 # =====================================================
-# Zelle 3: Regeln für Ladevorgänge (R1–R4)
+# Zelle 3c (NB_00): Anreichern – Zusammenhänge
 #
-# Jede Zeile wird mit vier Regeln geprüft.
-# Das Ergebnis steht in einer neuen Spalte "fehler":
-#   []            → Zeile ist in Ordnung
-#   ["R2", "R3"]  → Zeile verstößt gegen R2 und R3
-#
-# R1 unterscheidet zwei Fälle derselben ladevorgang_id:
-#   exakte Kopie (alle Werte gleich)
-#     → die erste Zeile bleibt gültig, jede weitere
-#       Kopie ist ein Fehler (harmlos, wird bereinigt)
-#   Widerspruch (gleiche ID, andere Werte)
-#     → alle Zeilen dieser ID sind Fehler, denn niemand
-#       weiß, welche stimmt (Partner muss klären)
-#
-# Fehlerhafte Zeilen werden nicht gelöscht, nur markiert.
+# Hilfsspalten, die mehrere Zeilen vergleichen:
+#   _r1                gleiche ID mehrfach (Widerspruch
+#                      oder überzählige exakte Kopie)
+#   _kopie_andere_id   gleicher Inhalt, andere ID
+#   _lp_ueberschneidung  Ladepunkt zeitgleich belegt
+#   _kunde_parallel    Kunde zeitgleich an 2 Stationen
 # =====================================================
 
 from pyspark.sql import functions as F
 from pyspark.sql.window import Window
 
-# Beschreibung jeder Regel (für Berichte und Fehlerzeilen)
-REGELN = {
-    "R1": "ladevorgang_id mehrfach: widersprüchliche Werte oder überzählige exakte Kopie",
-    "R2": "energie_kwh ist leer oder nicht größer als 0",
-    "R3": "ende_zeit liegt vor start_zeit",
-    "R4": "station_id ist unbekannt",
-    "R5": "Schlüssel in Stammdaten leer oder doppelt",
-}
+
+def _hash(spalten):
+    return F.sha2(F.concat_ws("||", *[F.coalesce(F.col(s).cast("string"), F.lit("")) for s in spalten]), 256)
 
 
-def pruefe_ladevorgaenge(df, df_stationen):
-    """Prüft jede Zeile mit R1–R4 und ergänzt die Spalte 'fehler'."""
-    spalten = df.columns
-
-    # Für R1: Fingerabdruck des ganzen Inhalts einer Zeile
-    inhalt = F.sha2(F.concat_ws("||", *[F.coalesce(F.col(s).cast("string"), F.lit("")) for s in spalten]), 256)
+def _zusammenhang(df):
+    sp = df.columns
     je_id = Window.partitionBy("ladevorgang_id")
-    je_id_sortiert = Window.partitionBy("ladevorgang_id").orderBy("_inhalt")
+    lp = Window.partitionBy("ladepunkt_id").orderBy("start_zeit", "ladevorgang_id")
+    kd = Window.partitionBy("kunde_id").orderBy("start_zeit", "ladevorgang_id")
+    nein = F.lit(False)
+    vorher_ende = F.max("ende_zeit").over(lp.rowsBetween(Window.unboundedPreceding, -1))
+    nachher_start = F.min("start_zeit").over(lp.rowsBetween(1, Window.unboundedFollowing))
+    anders = lambda f: f("station_id").over(kd) != F.col("station_id")
+    return (df.withColumn("_inhalt", _hash(sp))
+              .withColumn("_anzahl", F.count("*").over(je_id))
+              .withColumn("_varianten", F.size(F.collect_set("_inhalt").over(je_id)))
+              .withColumn("_nr", F.row_number().over(je_id.orderBy("_inhalt")))
+              .withColumn("_r1", (F.col("_anzahl") > 1) & ((F.col("_varianten") > 1) | (F.col("_nr") > 1)))
+              .withColumn("_kopie_andere_id", F.dense_rank().over(
+                  Window.partitionBy(_hash([s for s in sp if s != "ladevorgang_id"])).orderBy("ladevorgang_id")) > 1)
+              .withColumn("_lp_ueberschneidung", F.coalesce(vorher_ende > F.col("start_zeit"), nein)
+                          | F.coalesce(nachher_start < F.col("ende_zeit"), nein))
+              .withColumn("_kunde_parallel",
+                  F.coalesce((F.lag("ende_zeit").over(kd) > F.col("start_zeit")) & anders(F.lag), nein)
+                  | F.coalesce((F.lead("start_zeit").over(kd) < F.col("ende_zeit")) & anders(F.lead), nein)))
 
-    # Für R4: Liste der bekannten Stationen
-    bekannt = (df_stationen.select("station_id").distinct()
-                           .withColumn("_bekannt", F.lit(True)))
 
-    df = (df.withColumn("_inhalt", inhalt)
-            .withColumn("_anzahl", F.count("*").over(je_id))
-            .withColumn("_varianten", F.size(F.collect_set("_inhalt").over(je_id)))
-            .withColumn("_nr", F.row_number().over(je_id_sortiert))
-            .join(bekannt, on="station_id", how="left"))
-
-    widerspruch = (F.col("_anzahl") > 1) & (F.col("_varianten") > 1)
-    kopie = (F.col("_anzahl") > 1) & (F.col("_varianten") == 1) & (F.col("_nr") > 1)
-
-    fehler = F.array_compact(F.array(
-        F.when(widerspruch | kopie, F.lit("R1")),
-        F.when(F.col("energie_kwh").isNull() | (F.col("energie_kwh") <= 0), F.lit("R2")),
-        F.when(F.col("ende_zeit") < F.col("start_zeit"), F.lit("R3")),
-        F.when(F.col("_bekannt").isNull(), F.lit("R4")),
-    ))
-
-    return df.withColumn("fehler", fehler).select(*spalten, "fehler")
+print("✓ Zusammenhänge bereit")
 
 # METADATA ********************
 
@@ -199,42 +180,219 @@ def pruefe_ladevorgaenge(df, df_stationen):
 # CELL ********************
 
 # =====================================================
-# Zelle 4: Regel R5 für Stammdaten und Score
+# Zelle 3d (NB_00): Anreichern
 #
-# R5: Der Schlüssel (kunde_id, station_id, tarif_id)
-#     darf nicht leer und nicht doppelt sein.
-#     Schon ein Fehler sperrt die ganze Lieferung.
-#
-# Score: 100 minus Prozent der fehlerhaften Zeilen.
-#        Beispiel: 20 von 400 Zeilen fehlerhaft → Score 95
+# anreichern hängt an jede Zeile die Hilfsspalten (_),
+# die die Regeln im Katalog brauchen:
+#   Stammdaten:    _schluessel_leer, _schluessel_anzahl
+#   Ladevorgänge:  Zusammenhänge (Zelle 3c), Dauer in
+#                  Minuten, Ladetag, Station und Kunde
+#                  bekannt?, Tarifpreis (aus Silber)
+# Braucht eine neue Regel neue Daten, wird nur hier
+# ergänzt – auch das bleibt in NB_00.
 # =====================================================
 
 
-def pruefe_stammdaten(df, quelle):
-    """Prüft Stammdaten mit R5 und ergänzt die Spalte 'fehler'."""
-    schluessel = SCHLUESSEL[quelle]
-    je_schluessel = Window.partitionBy(schluessel)
+def _bekannt(tabelle, spalte, merker):
+    return spark.table(tabelle).select(spalte).distinct().withColumn(merker, F.lit(True))
 
-    leer = F.col(schluessel).isNull() | (F.trim(F.col(schluessel)) == "")
-    doppelt = F.count("*").over(je_schluessel) > 1
 
-    fehler = F.array_compact(F.array(
-        F.when(leer | doppelt, F.lit("R5")),
-    ))
-    return df.withColumn("fehler", fehler)
+def anreichern(df, quelle, lieferung):
+    if quelle in STAMMDATEN_QUELLEN:
+        s = SCHLUESSEL[quelle]
+        return (df.withColumn("_schluessel_leer", F.col(s).isNull() | (F.trim(F.col(s)) == ""))
+                  .withColumn("_schluessel_anzahl", F.count("*").over(Window.partitionBy(s))))
+
+    tarife = spark.table("silber.tarife").select("tarif_id", F.col("preis_pro_kwh").alias("_preis"))
+    return (_zusammenhang(df)
+            .withColumn("_dauer_min", (F.unix_timestamp("ende_zeit") - F.unix_timestamp("start_zeit")) / 60)
+            .withColumn("_lieferdatum", F.lit(lieferung["lieferdatum"]).cast("date"))
+            .join(_bekannt("silber.stationen", "station_id", "_station_bekannt"), "station_id", "left")
+            .join(_bekannt("silber.kunden", "kunde_id", "_kunde_bekannt"), "kunde_id", "left")
+            .join(tarife, "tarif_id", "left"))
+
+
+print("✓ anreichern bereit")
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# CELL ********************
+
+# =====================================================
+# Zelle 3e (NB_00): Prüfmaschine und Score
+#
+# pruefen nimmt alle Regeln des Katalogs, die für die
+# Quelle gelten, und ergänzt zwei Spalten:
+#   fehler    verletzte Regeln der Art sperrt/fehler
+#   hinweise  verletzte Regeln der Art hinweis
+#   []  → in Ordnung    ["R2", "R9"] → zwei Verstöße
+# Fehlerhafte Zeilen werden nicht gelöscht, nur markiert.
+# Gibt es für die Quelle keine aktive Regel (Tabelle
+# leer oder nicht lesbar), stoppt der Lauf – lieber
+# anhalten als ungeprüft durchlassen.
+#
+# Score: 100 minus Prozent der Zeilen mit Fehlern.
+#        Hinweise zählen nicht.
+#        Beispiel: 20 von 400 fehlerhaft → Score 95
+# =====================================================
+
+
+def _liste(regeln, arten):
+    teile = [F.when(F.expr(r.bedingung), F.lit(r.kuerzel)) for r in regeln if r.art in arten]
+    return F.array_compact(F.array(*teile)) if teile else F.array().cast("array<string>")
+
+
+def pruefen(df, quelle, lieferung):
+    regeln = [r for r in REGELWERK if quelle in r.quellen]
+    if not regeln:
+        raise ValueError(f"Keine aktiven Regeln für {quelle} geladen – Lauf gestoppt, "
+                         "damit nichts ungeprüft durchgeht. steuerung.regeln prüfen (NB_00, Zelle 3g).")
+    spalten = df.columns
+    return (anreichern(df, quelle, lieferung)
+            .withColumn("fehler", _liste(regeln, ("sperrt", "fehler")))
+            .withColumn("hinweise", _liste(regeln, ("hinweis",)))
+            .select(*spalten, "fehler", "hinweise"))
 
 
 def berechne_score(df_geprueft):
     """Zählt Zeilen und Fehlerzeilen und berechnet den Score."""
     zeilen = df_geprueft.count()
     fehlerzeilen = df_geprueft.filter(F.size("fehler") > 0).count()
-
-    if zeilen == 0:
-        score = 0.0
-    else:
-        score = round(100 - 100 * fehlerzeilen / zeilen, 1)
-
+    score = 0.0 if zeilen == 0 else round(100 - 100 * fehlerzeilen / zeilen, 1)
     return {"zeilen": zeilen, "fehlerzeilen": fehlerzeilen, "score": score}
+
+
+print("✓ pruefen und berechne_score bereit")
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# CELL ********************
+
+# =====================================================
+# Zelle 3f (NB_00): Prüfen und festhalten
+#
+# pruefen_und_festhalten – für jede Quelle gleich:
+#   1. jede Zeile mit dem Katalog prüfen, Score
+#   2. alte Einträge dieser Lieferung löschen
+#      (zweiter Lauf ändert nichts)
+#   3. qualitaet.fehlerzeilen schreiben:
+#        Zeilen mit Fehlern   → Status offen
+#        Zeilen mit Hinweisen → Status hinweis
+#      je mit Regel(n), Grund und Originalzeile
+#   4. geprüfte Zeilen und Score zurückgeben
+# NB_03 und NB_04 rufen nur diese Funktion auf.
+# =====================================================
+
+
+def pruefen_und_festhalten(df, lieferung):
+    quelle, lid = lieferung["quelle"], lieferung["lieferung_id"]
+    geprueft = pruefen(df, quelle, lieferung).localCheckpoint()
+    ergebnis = berechne_score(geprueft)
+
+    spark.sql(f"DELETE FROM qualitaet.fehlerzeilen WHERE lieferung_id = {sql_text(lid)}")
+
+    beschreibung = F.create_map(*[x for k, t in REGELN.items() for x in (F.lit(k), F.lit(t))])
+    fach = [s for s, _ in DATENVERTRAG[quelle]]
+    id_spalte = F.col("ladevorgang_id") if quelle == "ladevorgaenge" else F.lit(None).cast("string")
+
+    def zeilen(spalte, status):
+        return geprueft.filter(F.size(spalte) > 0).select(
+            F.lit(lid).alias("lieferung_id"),
+            id_spalte.alias("ladevorgang_id"),
+            F.concat_ws(",", spalte).alias("regel"),
+            F.concat_ws("; ", F.transform(spalte, lambda r: beschreibung[r])).alias("grund"),
+            F.concat_ws(",", *[F.coalesce(F.col(s).cast("string"), F.lit("")) for s in fach]).alias("rohzeile"),
+            F.current_timestamp().alias("erkannt_am"),
+            F.lit(status).alias("status"),
+            F.lit(None).cast("timestamp").alias("geklaert_am"),
+            F.lit(None).cast("string").alias("bemerkung"))
+
+    (zeilen("fehler", "offen").unionByName(zeilen("hinweise", "hinweis"))
+        .write.mode("append").saveAsTable("qualitaet.fehlerzeilen"))
+    return geprueft, ergebnis
+
+
+print("✓ pruefen_und_festhalten bereit")
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# CELL ********************
+
+# =====================================================
+# Zelle 3g (NB_00): Regeln aus der Steuerungstabelle
+#
+# Liest die aktiven Regeln aus steuerung.regeln
+# (Aufbau: NB_01, Zelle 4b). Pflege nur in der Tabelle.
+#
+# Jede Regel wird beim Laden geprüft. Ist eine kaputt,
+# stoppt alles sofort mit ihrem Kürzel. Ist die Tabelle
+# nicht lesbar: Warnung mit Grund, Zelle 3e stoppt.
+# =====================================================
+
+from collections import namedtuple
+from datetime import date
+
+Regel = namedtuple("Regel", "kuerzel quellen art beschreibung bedingung")
+STAMMDATEN_QUELLEN = ("kunden", "stationen", "tarife")
+ARTEN = ("sperrt", "fehler", "hinweis")
+
+
+def _nicht_lesbar(tabelle):
+    try:
+        spark.table(tabelle).schema
+        return None
+    except Exception as e:
+        return str(e).splitlines()[0][:160]
+
+
+def _kaputt(regel, probe):
+    if regel.art not in ARTEN:
+        return f"Art „{regel.art}“ unbekannt, erlaubt: {', '.join(ARTEN)}"
+    for q in regel.quellen:
+        if q not in probe:
+            return f"Quelle „{q}“ unbekannt"
+        try:
+            probe[q].select(F.expr(regel.bedingung)).schema
+        except Exception as e:
+            return f"Bedingung passt nicht zu {q}: {str(e).splitlines()[0][:160]}"
+    return None
+
+
+def regeln_laden():
+    grund = _nicht_lesbar("steuerung.regeln")
+    if grund:
+        print(f"⚠ Keine Regeln geladen – steuerung.regeln nicht lesbar: {grund}")
+        return []
+    regeln = [Regel(z.kuerzel, tuple(q.strip() for q in z.quellen.split(",")), z.art, z.beschreibung, z.bedingung)
+              for z in spark.table("steuerung.regeln").filter("aktiv")
+                            .orderBy(F.expr("int(substr(kuerzel, 2))")).collect()]
+    if not any(_nicht_lesbar(t) for t in ("silber.stationen", "silber.kunden", "silber.tarife")):
+        leer = lambda q: spark.createDataFrame([], ", ".join(f"{n} {t}" for n, t in DATENVERTRAG[q]))
+        probe = {q: anreichern(leer(q), q, {"lieferdatum": date(2000, 1, 1)}) for q in QUELLEN}
+        fehler = [f"{r.kuerzel}: {grund}" for r in regeln if (grund := _kaputt(r, probe))]
+        if fehler:
+            raise ValueError("Fehlerhafte Regeln in steuerung.regeln:\n  " + "\n  ".join(fehler))
+    return regeln
+
+
+REGELWERK = regeln_laden()
+REGELN = {r.kuerzel: r.beschreibung for r in REGELWERK}
+print(f"✓ Regeln: {len(REGELWERK)} aktive aus steuerung.regeln geladen und geprüft")
 
 # METADATA ********************
 

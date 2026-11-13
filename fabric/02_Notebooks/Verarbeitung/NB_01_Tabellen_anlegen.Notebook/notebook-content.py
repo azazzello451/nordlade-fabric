@@ -145,6 +145,122 @@ tabelle_anlegen("steuerung.wasserstand", """
 # CELL ********************
 
 # =====================================================
+# Zelle 4b (NB_01): Steuerungstabelle der Regeln
+#
+# steuerung.regeln – eine Zeile = eine Prüfregel:
+#   kuerzel       R1, R2, …
+#   quellen       für welche Quellen, mit Komma getrennt
+#   art           sperrt  schon eine Zeile sperrt die
+#                         ganze Lieferung
+#                 fehler  Zeile raus, zählt im Score
+#                 hinweis Zeile geht durch, nur melden
+#   beschreibung  Klartext für Fehlerzeilen und Berichte
+#   bedingung     SQL-Ausdruck, wahr = Regel verletzt;
+#                 Spalten mit _ liefert NB_00 (anreichern)
+#   aktiv         false = abgeschaltet, bleibt Nachweis
+#   geaendert_am  wann zuletzt geändert
+# Jede Änderung steht in der Delta-Historie
+# (DESCRIBE HISTORY steuerung.regeln).
+# Die Startregeln füllen die Zellen 4c und 4d.
+# =====================================================
+
+tabelle_anlegen("steuerung.regeln", """
+    kuerzel        STRING,
+    quellen        STRING,
+    art            STRING,
+    beschreibung   STRING,
+    bedingung      STRING,
+    aktiv          BOOLEAN,
+    geaendert_am   TIMESTAMP
+""")
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# CELL ********************
+
+# =====================================================
+# Zelle 4c (NB_01): Startregeln, Teil 1 (R1–R9)
+#
+# Die Regeln, mit denen das Projekt startet. Eingetragen
+# werden sie in Zelle 4d. Danach werden Regeln nur noch
+# in der Tabelle gepflegt.
+# =====================================================
+
+LV, SD = "ladevorgaenge", "kunden,stationen,tarife"
+STARTREGELN_TEIL_1 = [
+ ("R1", LV, "fehler", "ladevorgang_id mehrfach: widersprüchliche Werte oder überzählige exakte Kopie", "_r1"),
+ ("R2", LV, "fehler", "energie_kwh ist leer oder nicht größer als 0", "energie_kwh IS NULL OR energie_kwh <= 0"),
+ ("R3", LV, "fehler", "ende_zeit liegt nicht nach start_zeit",
+  "start_zeit IS NULL OR ende_zeit IS NULL OR ende_zeit <= start_zeit"),
+ ("R4", LV, "fehler", "station_id ist unbekannt", "_station_bekannt IS NULL"),
+ ("R5", SD, "sperrt", "Schlüssel in Stammdaten leer oder doppelt", "_schluessel_leer OR _schluessel_anzahl > 1"),
+ ("R6", LV, "fehler", "kunde_id ist unbekannt", "_kunde_bekannt IS NULL"),
+ ("R7", LV, "fehler", "tarif_id ist unbekannt", "_preis IS NULL"),
+ ("R8", LV, "fehler", "ladepunkt_id passt nicht zur Station (LP-<Station>-<1 bis 4>)",
+  "coalesce(NOT ladepunkt_id RLIKE concat('^LP-', substr(station_id, 4), '-[1-4]$'), true)"),
+ ("R9", LV, "fehler", "umsatz_eur weicht um mehr als 1 Cent von energie_kwh × Tarifpreis ab",
+  "_preis IS NOT NULL AND energie_kwh IS NOT NULL AND coalesce(abs(umsatz_eur - energie_kwh * _preis) > 0.01, true)"),
+]
+
+print("✓ Startregeln Teil 1 bereit")
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# CELL ********************
+
+# =====================================================
+# Zelle 4d (NB_01): Startregeln, Teil 2 (R10–R17)
+#                   und eintragen
+#
+# Trägt nur Regeln ein, deren Kürzel noch fehlt (MERGE):
+# von Hand geänderte Regeln werden nie überschrieben,
+# zweimal ausführen ändert nichts.
+# =====================================================
+
+STARTREGELN = STARTREGELN_TEIL_1 + [
+ ("R10", LV, "fehler", "marge_eur ist nicht 20 % von umsatz_eur",
+  "umsatz_eur IS NOT NULL AND coalesce(marge_eur <> round(umsatz_eur * 0.2, 2), true)"),
+ ("R11", LV, "fehler", "start_zeit liegt nicht am Ladetag (Lieferdatum minus 1 Tag)",
+  "coalesce(to_date(start_zeit) <> date_sub(_lieferdatum, 1), true)"),
+ ("R12", LV, "fehler", "Ladeleistung physikalisch unmöglich (über 400 kW)",
+  "_dauer_min > 0 AND energie_kwh * 60 / _dauer_min > 400"),
+ ("R13", LV, "fehler", "inhaltlich doppelt unter anderer ladevorgang_id (überzählige Kopie)", "_kopie_andere_id"),
+ ("R14", LV, "hinweis", "Ladedauer über 12 Stunden", "_dauer_min > 720"),
+ ("R15", LV, "hinweis", "energie_kwh über 150 (mehr, als ein Fahrzeugakku fasst)", "energie_kwh > 150"),
+ ("R16", LV, "hinweis", "Ladepunkt gleichzeitig doppelt belegt", "_lp_ueberschneidung"),
+ ("R17", LV, "hinweis", "Kunde gleichzeitig an zwei Stationen", "_kunde_parallel"),
+]
+
+(spark.createDataFrame(STARTREGELN, "kuerzel string, quellen string, art string, beschreibung string, bedingung string")
+      .createOrReplaceTempView("startregeln"))
+spark.sql("""
+    MERGE INTO steuerung.regeln AS ziel
+    USING startregeln AS neu ON ziel.kuerzel = neu.kuerzel
+    WHEN NOT MATCHED THEN INSERT (kuerzel, quellen, art, beschreibung, bedingung, aktiv, geaendert_am)
+         VALUES (neu.kuerzel, neu.quellen, neu.art, neu.beschreibung, neu.bedingung, true, current_timestamp())
+""")
+print(f"✓ steuerung.regeln: {spark.table('steuerung.regeln').count()} Regeln")
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# CELL ********************
+
+# =====================================================
 # Zelle 5: Tabellen der Qualität
 #
 # qualitaet.lieferungen    – das Register: eine Zeile je
@@ -381,7 +497,7 @@ tabelle_anlegen("gold.datenstand", """
 # =====================================================
 
 ERWARTET = {
-    "steuerung": ["laeufe", "wasserstand"],
+    "steuerung": ["laeufe", "wasserstand", "regeln"],
     "qualitaet": ["lieferungen", "fehlerzeilen"],
     "silber":    ["ladevorgaenge", "kunden", "stationen", "tarife"],
     "gold":      ["fakt_ladevorgang", "dim_kunde", "dim_station",

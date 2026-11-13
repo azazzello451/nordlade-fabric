@@ -84,23 +84,17 @@ print("Lauf:", lauf_id)
 # CELL ********************
 
 # =====================================================
-# Zelle 3a (NB_04): Werkzeuge – lesen, prüfen, Fehler festhalten
+# Zelle 3a (NB_04): Werkzeug – Lieferung lesen
 #
 # lieferung_lesen
 #   Liest eine Ladevorgangs-Datei aus Bronze mit den
 #   Spalten und Typen aus dem Datenvertrag (NB_00).
 #
-# pruefen_und_festhalten
-#   Prüft jede Zeile mit R1–R4 (Funktion aus NB_00),
-#   berechnet den Score und schreibt jede fehlerhafte
-#   Zeile nach qualitaet.fehlerzeilen – mit Regel(n),
-#   Grund und Originalzeile.
-#   Vorher werden alte Fehlerzeilen dieser Lieferung
-#   gelöscht – so ändert ein zweiter Lauf nichts.
-#   Gibt die geprüften Zeilen und den Score zurück.
-#
-# Wie viele Fehler je Regel? → aus qualitaet.fehlerzeilen
-# zählen; Zeilen und Score stehen im Register.
+# Geprüft wird in Zelle 4 mit pruefen_und_festhalten
+# aus NB_00: alle Regeln des Regelkatalogs, Score,
+# Fehlerzeilen (offen) und Hinweise (hinweis).
+# Neue Regeln kommen nur in NB_00 dazu – dieses
+# Notebook bleibt unverändert.
 # =====================================================
 
 from pyspark.sql import functions as F
@@ -112,35 +106,7 @@ def lieferung_lesen(pfad):
     return spark.read.option("header", True).schema(schema).csv(pfad)
 
 
-def pruefen_und_festhalten(df, lieferung):
-    """Prüft R1–R4, schreibt die Fehlerzeilen, gibt (geprueft, ergebnis) zurück."""
-    stationen = spark.table("silber.stationen").select("station_id")
-    geprueft = pruefe_ladevorgaenge(df, stationen).localCheckpoint()   # Funktion aus NB_00
-    ergebnis = berechne_score(geprueft)                                 # Funktion aus NB_00
-    lid = lieferung["lieferung_id"]
-
-    spark.sql(f"DELETE FROM qualitaet.fehlerzeilen WHERE lieferung_id = {sql_text(lid)}")
-
-    # jede fehlerhafte Zeile einzeln, mit allen verletzten Regeln
-    beschreibung = F.create_map(*[x for r, t in REGELN.items() for x in (F.lit(r), F.lit(t))])
-    fach = [s for s, _ in DATENVERTRAG["ladevorgaenge"]]
-    (geprueft.filter(F.size("fehler") > 0)
-        .select(
-            F.lit(lid).alias("lieferung_id"),
-            "ladevorgang_id",
-            F.concat_ws(",", "fehler").alias("regel"),
-            F.concat_ws("; ", F.transform("fehler", lambda r: beschreibung[r])).alias("grund"),
-            F.concat_ws(",", *[F.coalesce(F.col(s).cast("string"), F.lit("")) for s in fach]).alias("rohzeile"),
-            F.current_timestamp().alias("erkannt_am"),
-            F.lit("offen").alias("status"),
-            F.lit(None).cast("timestamp").alias("geklaert_am"),
-            F.lit(None).cast("string").alias("bemerkung"))
-        .write.mode("append").saveAsTable("qualitaet.fehlerzeilen"))
-
-    return geprueft, ergebnis
-
-
-print("✓ lieferung_lesen und pruefen_und_festhalten bereit")
+print("✓ lieferung_lesen bereit")
 
 # METADATA ********************
 
@@ -152,59 +118,7 @@ print("✓ lieferung_lesen und pruefen_und_festhalten bereit")
 # CELL ********************
 
 # =====================================================
-# Zelle 3a: Prüfstation – Teil 2: prüfen, festhalten
-#
-#   2. Jede Zeile mit R1–R4 aus NB_00 prüfen.
-#        []  → in Ordnung    [R2] → kWh fehlt
-#   3. Score berechnen (z. B. 7 von 400 fehlerhaft → 98,2).
-#   4. Alte Fehlerzeilen dieser Datei löschen (nichts doppelt).
-#   5. Jede fehlerhafte Zeile nach qualitaet.fehlerzeilen
-#      (Status: offen). Fehler je Regel lassen sich hieraus
-#      zählen.
-#   6. Geprüfte Zeilen und Score an Zelle 4 zurückgeben.
-# Die Entscheidung trifft Zelle 4, Silber schreibt Zelle 3b.
-# =====================================================
-
-def pruefen_und_festhalten(df, lieferung):
-    """Schritte 2–6: prüfen, Score, Fehlerzeilen schreiben, zurückgeben."""
-    stationen = spark.table("silber.stationen").select("station_id")
-    geprueft = pruefe_ladevorgaenge(df, stationen).localCheckpoint()   # Funktion aus NB_00
-    ergebnis = berechne_score(geprueft)                                 # Funktion aus NB_00
-    lid = lieferung["lieferung_id"]
-
-    spark.sql(f"DELETE FROM qualitaet.fehlerzeilen WHERE lieferung_id = {sql_text(lid)}")
-
-    beschreibung = F.create_map(*[x for r, t in REGELN.items() for x in (F.lit(r), F.lit(t))])
-    fach = [s for s, _ in DATENVERTRAG["ladevorgaenge"]]
-    (geprueft.filter(F.size("fehler") > 0)
-        .select(
-            F.lit(lid).alias("lieferung_id"),
-            "ladevorgang_id",
-            F.concat_ws(",", "fehler").alias("regel"),
-            F.concat_ws("; ", F.transform("fehler", lambda r: beschreibung[r])).alias("grund"),
-            F.concat_ws(",", *[F.coalesce(F.col(s).cast("string"), F.lit("")) for s in fach]).alias("rohzeile"),
-            F.current_timestamp().alias("erkannt_am"),
-            F.lit("offen").alias("status"),
-            F.lit(None).cast("timestamp").alias("geklaert_am"),
-            F.lit(None).cast("string").alias("bemerkung"))
-        .write.mode("append").saveAsTable("qualitaet.fehlerzeilen"))
-
-    return geprueft, ergebnis
-
-
-print("✓ pruefen_und_festhalten bereit")
-
-# METADATA ********************
-
-# META {
-# META   "language": "python",
-# META   "language_group": "synapse_pyspark"
-# META }
-
-# CELL ********************
-
-# =====================================================
-# Zelle 3b: Gültige Zeilen nach Silber
+# Zelle 3b (NB_04): Gültige Zeilen nach Silber
 #
 # Wird von Zelle 4 nur aufgerufen, wenn der Score die
 # Schwelle erreicht. Am Beispiel Ladevorgänge vom 1.7.
@@ -221,10 +135,12 @@ print("✓ pruefen_und_festhalten bereit")
 #   3. Korrektur erkennen: Kommt eine ladevorgang_id
 #      jetzt gültig an, die früher als Fehlerzeile
 #      aussortiert wurde, wird die alte Fehlerzeile auf
-#      geklaert gesetzt (z. B. Tag 65 → Tag 70).
+#      geklaert gesetzt (z. B. Tag 65 v2 klärt v1).
 #   4. Bilanz mit den TATSÄCHLICH geschriebenen Zahlen:
 #        gelesen (400) = in Silber gemergt (393)
 #                      + in Fehlerzeilen geschrieben (7)
+#      Hinweise (Status hinweis) zählen nicht mit – die
+#      Zeile ist ja trotzdem in Silber.
 #      Stimmt das nicht, stoppt der Lauf mit Fehler.
 # =====================================================
 
@@ -234,7 +150,7 @@ def nach_silber(geprueft, ergebnis, lieferung):
 
     # 1. gültige Zeilen mit Herkunft
     spalten = spark.table("silber.ladevorgaenge").columns
-    (geprueft.filter(F.size("fehler") == 0).drop("fehler")
+    (geprueft.filter(F.size("fehler") == 0).drop("fehler", "hinweise")
         .withColumn("lieferung_id", F.lit(lid))
         .withColumn("lieferdatum", F.lit(lieferung["lieferdatum"]))
         .withColumn("version", F.lit(lieferung["version"]))
@@ -264,7 +180,8 @@ def nach_silber(geprueft, ergebnis, lieferung):
     """)
 
     # 4. Bilanz mit geschriebenen Zahlen
-    geschrieben_fehler = spark.table("qualitaet.fehlerzeilen").filter(F.col("lieferung_id") == lid).count()
+    geschrieben_fehler = (spark.table("qualitaet.fehlerzeilen")
+                          .filter((F.col("lieferung_id") == lid) & (F.col("status") != "hinweis")).count())
     pruefe_bilanz(ergebnis["zeilen"], im_merge, geschrieben_fehler, lid)   # Funktion aus NB_00
     return im_merge, geschrieben_fehler
 
