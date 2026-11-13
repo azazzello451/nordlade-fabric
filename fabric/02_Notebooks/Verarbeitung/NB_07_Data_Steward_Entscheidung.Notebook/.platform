@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "NB_07_Data_Steward_Entscheidung",
+    "description": "Oberfläche für den Data Steward: zeigt alle gesperrten Lieferungen mit ihren Fehlerzeilen. Kommt vom Partner keine Korrektur, verwirft er hier Ladevorgangs-Lieferungen, mit Name, Zeit und Begründung."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "e0eb8ed3-89e9-9b61-4fa5-1881963b0453"
+  }
+}

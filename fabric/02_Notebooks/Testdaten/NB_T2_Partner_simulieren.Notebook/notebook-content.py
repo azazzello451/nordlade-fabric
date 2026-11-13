@@ -56,8 +56,8 @@
 #                         die veränderte Datei
 # =====================================================
 
-von_datum = "03.08.2026"
-bis_datum = "03.08.2026"
+von_datum = "24.09.2026"
+bis_datum = "28.09.2026"
 quelle = "alle"
 version = 1
 variante = False

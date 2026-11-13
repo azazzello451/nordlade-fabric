@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "NB_T3_Blindtest_Dateien",
+    "description": "Blindtest: erzeugt 5 Ladevorgangs-Dateien (v9, Tage 86–90) mit Fehlern, die eine unabhängige KI-Sitzung ohne Kenntnis der Prüfregeln eingebaut hat. Lösungsblatt in Files/blindtest. Erst nach dem Gesamttest in die Ablage legen."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "b068c3ed-01b8-8e77-4681-29b556d17fac"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "NB_T0_Zuruecksetzen",
+    "description": "Testhilfe: löscht alle Tabellen (steuerung, qualitaet, silber, gold) und die Ordner bronze, partner_ablage, berichte – für einen Test von null. Lager und Blindtest bleiben. Nur in dev und nur mit Bestätigung. Danach NB_01 ausführen."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "d5f0bf63-3168-b4e3-4c6d-0f048fa1fb8c"
+  }
+}
