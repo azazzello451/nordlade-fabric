@@ -45,19 +45,6 @@ Die Daten sind synthetisch. Gebaut auf einer Fabric-Kapazität F2.
 | Gold inkrementell (Change Data Feed) | Nur Neues wird verarbeitet – schnell und günstig auf kleiner Kapazität |
 | Klare Verantwortung | Der Steward entscheidet über Daten, der Engineer behebt Technik |
 
-## Aufbau des Repos
-
-```
-fabric/                      Fabric-Elemente (über die Git-Integration synchronisiert)
-├── 01_Daten/                Lakehouse
-├── 02_Notebooks/
-│   ├── Verarbeitung/        NB_00 bis NB_07
-│   ├── Pflege/              NB_08
-│   └── Testdaten/           NB_T0 bis NB_T3 (nur Entwicklung)
-├── 03_Pipelines/            PL_Verarbeitung, PL_Tagesbericht, PL_Pflege
-└── 04_Modelle_und_Berichte/ Semantisches Modell und Bericht
-docs/                        Diagramm und Architektur-PDF
-```
 
 ## Technik
 
